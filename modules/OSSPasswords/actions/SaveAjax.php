@@ -15,8 +15,8 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 	public function process(Vtiger_Request $request)
 	{
 		$db = PearDatabase::getInstance();
-		$log = vglobal('log');
-		$log->debug('Starting Quick Edit OSSPasswords');
+
+		\App\Log::trace('Starting Quick Edit OSSPasswords');
 
 		// czy to 'password'????
 		$isPassword = $request->get('field') == 'password' ? true : false;
@@ -34,22 +34,22 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 			$recordId = $request->get('record');
 			$properPassword = $isPassword ? $request->get('value') : '**********';
 
-			$log->debug('recordid: ' . $recordId . ' properpass:' . $properPassword);
+			\App\Log::trace('recordid: ' . $recordId . ' properpass:' . $properPassword);
 
 			// if the password is hidden, get the proper one
 			if (strcmp($properPassword, '**********') == 0) {
-				$log->debug('Hidden password...');
-				if ($config) {	// when encryption is on
-					$log->debug('Get encrypted password.');
+				\App\Log::trace('Hidden password...');
+				if ($config) { // when encryption is on
+					\App\Log::trace('Get encrypted password.');
 					$sql = sprintf("SELECT AES_DECRYPT(`password`, '%s') AS pass FROM `vtiger_osspasswords` WHERE `osspasswordsid` = ?;", $config['key']);
 					$result = $db->pquery($sql, [$recordId], true);
 					$properPassword = $db->query_result($result, 0, 'pass');
 				} else {  // encryption mode is off
-					$log->debug('Get plain text password.');
+					\App\Log::trace('Get plain text password.');
 					$sql = "SELECT `password` AS pass FROM `vtiger_osspasswords` WHERE `osspasswordsid` = ?;";
 					$result = $db->pquery($sql, array($recordId), true);
 					$properPassword = $db->query_result($result, 0, 'pass');
-					$log->debug('Plain text pass: ' . $properPassword);
+					\App\Log::trace('Plain text pass: ' . $properPassword);
 				}
 			}
 
@@ -60,7 +60,7 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 
 		// apply encryption if encryption mode is on
 		if ($isPassword && $config) {
-			$log->debug('Encrypt new password: ' . $properPassword);
+			\App\Log::trace('Encrypt new password: ' . $properPassword);
 			$sql = "UPDATE `vtiger_osspasswords` SET `password` = AES_ENCRYPT(?, ?) WHERE `osspasswordsid` = ?;";
 			$result = $db->pquery($sql, array($properPassword, $config['key'], $recordId), true);
 		}
@@ -68,7 +68,7 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 		else if ($isRelatedPassword && $config) {
 			$record = $recordModel->getId();
 			$properPassword = $request->get('password');
-			$log->debug('Encrypt new related module password: ' . $properPassword);
+			\App\Log::trace('Encrypt new related module password: ' . $properPassword);
 			$sql = "UPDATE `vtiger_osspasswords` SET `password` = AES_ENCRYPT(?, ?) WHERE `osspasswordsid` = ?;";
 			$result = $db->pquery($sql, array($properPassword, $config['key'], $record), true);
 		}
@@ -84,7 +84,9 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 			if ($fieldModel->getFieldDataType() !== 'currency' && $fieldModel->getFieldDataType() !== 'datetime' && $fieldModel->getFieldDataType() !== 'time' && $fieldModel->getFieldDataType() !== 'date') {
 				$displayValue = $fieldModel->getDisplayValue($fieldValue, $recordModel->getId());
 			}
-
+			if ($fieldName === 'password') {
+				$fieldValue = $displayValue = '**********';
+			}
 			$result[$fieldName] = array('value' => $fieldValue, 'display_value' => $displayValue);
 		}
 
@@ -104,36 +106,5 @@ class OSSPasswords_SaveAjax_Action extends Vtiger_SaveAjax_Action
 		$response->setEmitType(Vtiger_Response::$EMIT_JSON);
 		$response->setResult($result);
 		$response->emit();
-	}
-
-	/**
-	 * Function to get the record model based on the request parameters
-	 * @param Vtiger_Request $request
-	 * @return Vtiger_Record_Model or Module specific Record Model instance
-	 */
-	public function getRecordModelFromRequest(Vtiger_Request $request)
-	{
-		$moduleName = $request->getModule();
-		$recordId = $request->get('record');
-
-		if (!empty($recordId)) {
-			$recordModel = Vtiger_Record_Model::getInstanceById($recordId, $moduleName);
-			$recordModel->set('id', $recordId);
-			$recordModel->set('mode', 'edit');
-
-			$fieldModelList = $recordModel->getModule()->getFields();
-			foreach ($fieldModelList as $fieldName => $fieldModel) {
-				$fieldValue = $fieldModel->getUITypeModel()->getUserRequestValue($recordModel->get($fieldName), $recordId);
-
-				if ($fieldName === $request->get('field')) {
-					$fieldValue = $request->get('value');
-				}
-				$recordModel->set($fieldName, $fieldValue);
-			}
-		} else {
-			$recordModel = parent::getRecordModelFromRequest($request);
-		}
-
-		return $recordModel;
 	}
 }

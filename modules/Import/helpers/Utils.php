@@ -96,34 +96,9 @@ class Import_Utils_Helper
 		return $importDirectory . "IMPORT_" . $user->id;
 	}
 
-	public static function getFileReaderInfo($type)
-	{
-		$configReader = new Import_Config_Model();
-		$importTypeConfig = $configReader->get('importTypes');
-		if (isset($importTypeConfig[$type])) {
-			return $importTypeConfig[$type];
-		}
-		return null;
-	}
-
-	public static function getFileReader($request, $user)
-	{
-		$fileReaderInfo = self::getFileReaderInfo($request->get('type'));
-		if (!empty($fileReaderInfo)) {
-			require_once $fileReaderInfo['classpath'];
-			$fileReader = new $fileReaderInfo['reader']($request, $user);
-		} else {
-			$fileReader = null;
-		}
-		return $fileReader;
-	}
-
 	public static function getDbTableName($user)
 	{
-		$configReader = new Import_Config_Model();
-		$userImportTablePrefix = $configReader->get('userImportTablePrefix');
-
-		$tableName = $userImportTablePrefix;
+		$tableName = Import_Module_Model::IMPORT_TABLE_PREFIX;
 		if (method_exists($user, 'getId')) {
 			$tableName .= $user->getId();
 		} else {
@@ -153,8 +128,8 @@ class Import_Utils_Helper
 	{
 
 		$errorMessage = vtranslate('ERR_MODULE_IMPORT_LOCKED', 'Import');
-		$errorDetails = array(vtranslate('LBL_MODULE_NAME', 'Import') => getTabModuleName($lockInfo['tabid']),
-			vtranslate('LBL_USER_NAME', 'Import') => \includes\fields\Owner::getUserLabel($lockInfo['userid']),
+		$errorDetails = array(vtranslate('LBL_MODULE_NAME', 'Import') => \App\Module::getModuleName($lockInfo['tabid']),
+			vtranslate('LBL_USER_NAME', 'Import') => \App\Fields\Owner::getUserLabel($lockInfo['userid']),
 			vtranslate('LBL_LOCKED_TIME', 'Import') => $lockInfo['locked_since']);
 
 		self::showErrorPage($errorMessage, $errorDetails);
@@ -202,7 +177,7 @@ class Import_Utils_Helper
 		if ($cache->getUserList($module, $current_user->id)) {
 			return $cache->getUserList($module, $current_user->id);
 		} else {
-			$userList = \includes\fields\Owner::getInstance()->getUsers(false, 'Active', $current_user->id);
+			$userList = \App\Fields\Owner::getInstance()->getUsers(false, 'Active', $current_user->id);
 			$cache->setUserList($module, $userList, $current_user->id);
 			return $userList;
 		}
@@ -214,7 +189,7 @@ class Import_Utils_Helper
 		if ($cache->getGroupList($module, $current_user->id)) {
 			return $cache->getGroupList($module, $current_user->id);
 		} else {
-			$groupList = \includes\fields\Owner::getInstance()->getGroups(false, 'Active', $current_user->id);
+			$groupList = \App\Fields\Owner::getInstance()->getGroups(false);
 			$cache->setGroupList($module, $groupList, $current_user->id);
 			return $groupList;
 		}
@@ -264,9 +239,9 @@ class Import_Utils_Helper
 			$request->set('error_message', vtranslate('LBL_IMPORT_FILE_COPY_FAILED', 'Import'));
 			return false;
 		}
-		$fileReader = Import_Utils_Helper::getFileReader($request, $current_user);
+		$fileReader = Import_Module_Model::getFileReader($request, $current_user);
 
-		if ($fileReader == null) {
+		if ($fileReader === null) {
 			$request->set('error_message', vtranslate('LBL_INVALID_FILE', 'Import'));
 			return false;
 		}

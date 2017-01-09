@@ -14,12 +14,12 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View
 	protected $listViewEntries = false;
 	protected $listViewHeaders = false;
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 	}
 
-	function preProcess(Vtiger_Request $request, $display = true)
+	public function preProcess(Vtiger_Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
 
@@ -49,7 +49,7 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View
 		$sortOrder = $request->get('sortorder');
 		$sourceModule = $request->get('sourceModule');
 		$forModule = $request->get('formodule');
-
+		$searchParams = $request->get('searchParams');
 		$searchKey = $request->get('search_key');
 		$searchValue = $request->get('search_value');
 
@@ -72,6 +72,10 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View
 		if (!empty($searchKey) && !empty($searchValue)) {
 			$listViewModel->set('search_key', $searchKey);
 			$listViewModel->set('search_value', $searchValue);
+		}
+		if(!empty($searchParams)){
+			$listViewModel->set('searchParams', $searchParams);
+			$viewer->assign('SEARCH_PARAMS', $searchParams);
 		}
 
 		if (!empty($orderBy)) {
@@ -116,7 +120,7 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View
 		$pagingModel->set('totalCount', (int) $totalCount);
 		$pageCount = $pagingModel->getPageCount();
 		$startPaginFrom = $pagingModel->getStartPagingFrom();
-		
+
 		$viewer->assign('PAGE_COUNT', $pageCount);
 		$viewer->assign('LISTVIEW_COUNT', $totalCount);
 		$viewer->assign('START_PAGIN_FROM', $startPaginFrom);
@@ -127,7 +131,7 @@ class Settings_Vtiger_List_View extends Settings_Vtiger_Index_View
 	 * @param Vtiger_Request $request
 	 * @return <Array> - List of Vtiger_JsScript_Model instances
 	 */
-	function getFooterScripts(Vtiger_Request $request)
+	public function getFooterScripts(Vtiger_Request $request)
 	{
 		$headerScriptInstances = parent::getFooterScripts($request);
 		$moduleName = $request->getModule();

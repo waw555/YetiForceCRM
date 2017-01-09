@@ -58,7 +58,7 @@ class Settings_Workflows_ExportWorkflow_Action extends Settings_Vtiger_Index_Act
 			$xmlTask->appendChild($xmlColumn);
 
 			if (strpos($task['task'], 'VTEntityMethodTask') !== false) {
-				require_once 'modules/com_vtiger_workflow/tasks/VTEntityMethodTask.inc';
+				require_once 'modules/com_vtiger_workflow/tasks/VTEntityMethodTask.php';
 				$taskObject = unserialize(html_entity_decode($task['task']));
 				$method = Settings_Workflows_Module_Model::exportTaskMethod($taskObject->methodName);
 
@@ -75,7 +75,7 @@ class Settings_Workflows_ExportWorkflow_Action extends Settings_Vtiger_Index_Act
 		}
 
 		$xmlMethods = $xml->createElement('workflow_methods');
-		foreach($workflowMethods as $method) {
+		foreach ($workflowMethods as $method) {
 			$xmlMethod = $xml->createElement('workflow_method');
 			$xmlMethod->appendChild($xml->createElement('module_name', html_entity_decode($method['module_name'], ENT_COMPAT, 'UTF-8')));
 			$xmlMethod->appendChild($xml->createElement('method_name', html_entity_decode($method['method_name'], ENT_COMPAT, 'UTF-8')));

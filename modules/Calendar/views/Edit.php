@@ -12,14 +12,14 @@
 Class Calendar_Edit_View extends Vtiger_Edit_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('Events');
 		$this->exposeMethod('Calendar');
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$mode = $request->getMode();
 
@@ -36,14 +36,14 @@ Class Calendar_Edit_View extends Vtiger_Edit_View
 		$this->Calendar($request, 'Calendar');
 	}
 
-	function Events($request, $moduleName)
+	public function Events($request, $moduleName)
 	{
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 
 		$viewer = $this->getViewer($request);
 		$record = $request->get('record');
 
-		if (!empty($record) && $request->get('isDuplicate') == true) {
+		if (!empty($record) && $request->getBoolean('isDuplicate') === true) {
 			$recordModel = Vtiger_Record_Model::getInstanceById($record, $moduleName);
 			$viewer->assign('MODE', '');
 		} else if (!empty($record)) {
@@ -87,7 +87,7 @@ Class Calendar_Edit_View extends Vtiger_Edit_View
 			}
 
 			if ($fieldModel->isEditable() || $specialField) {
-				$recordModel->set($fieldName, $fieldModel->getDBInsertValue($fieldValue));
+				$recordModel->set($fieldName, $fieldModel->getDBValue($fieldValue));
 			}
 		}
 		$recordStructureInstance = Vtiger_RecordStructure_Model::getInstanceFromRecordModel($recordModel, Vtiger_RecordStructure_Model::RECORD_STRUCTURE_MODE_EDIT);
@@ -111,7 +111,7 @@ Class Calendar_Edit_View extends Vtiger_Edit_View
 			$followUpTime = $requestFollowUpTime;
 		}
 		if ($followUpStatus == 'on') {
-			$viewer->assign('FOLLOW_UP_STATUS', TRUE);
+			$viewer->assign('FOLLOW_UP_STATUS', true);
 		}
 
 		$isRelationOperation = $request->get('relationOperation');
@@ -147,15 +147,15 @@ Class Calendar_Edit_View extends Vtiger_Edit_View
 		$viewer->assign('BLOCK_LIST', $moduleModel->getBlocks());
 		$viewer->assign('CURRENTDATE', date('Y-n-j'));
 		$viewer->assign('USER_MODEL', Users_Record_Model::getCurrentUserModel());
-		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', \includes\utils\Json::encode(Vtiger_DependencyPicklist::getPicklistDependencyDatasource($moduleName)));
-		$viewer->assign('MAPPING_RELATED_FIELD', \includes\utils\Json::encode(Vtiger_ModulesHierarchy_Model::getRelationFieldByHierarchy($moduleName)));
+		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', \App\Json::encode(Vtiger_DependencyPicklist::getPicklistDependencyDatasource($moduleName)));
+		$viewer->assign('MAPPING_RELATED_FIELD', \App\Json::encode(Vtiger_ModulesHierarchy_Model::getRelationFieldByHierarchy($moduleName)));
 		$viewer->assign('INVITIES_SELECTED', $recordModel->getInvities());
 		$viewer->assign('CURRENT_USER', $currentUser);
 
 		$viewer->view('EditView.tpl', $moduleName);
 	}
 
-	function Calendar($request, $moduleName)
+	public function Calendar($request, $moduleName)
 	{
 		parent::process($request);
 	}

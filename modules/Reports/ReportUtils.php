@@ -111,7 +111,7 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 			$curid_value = explode("::", $value);
 			$currency_id = $curid_value[0];
 			$currency_value = $curid_value[1];
-			$cur_sym_rate = getCurrencySymbolandCRate($currency_id);
+			$cur_sym_rate = \vtlib\Functions::getCurrencySymbolandRate($currency_id);
 			if ($value != '') {
 				if (($dbField->name == 'Products_Unit_Price')) { // need to do this only for Products Unit Price
 					if ($currency_id != 1) {
@@ -128,7 +128,7 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 		}
 	} elseif ($dbField->name == "PriceBooks_Currency") {
 		if ($value != '') {
-			$fieldvalue = getTranslatedCurrencyString($value);
+			$fieldvalue = \App\Language::translate($value, 'Currency');
 		}
 	} elseif (in_array($dbField->name, $report->ui101_fields) && !empty($value)) {
 		$entityNames = getEntityName('Users', $value);
@@ -138,7 +138,7 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 			$endTime = $valueArray['calendar_end_time'];
 			if (empty($endTime)) {
 				$recordId = $valueArray['calendar_id'];
-				$endTime = getSingleFieldValue('vtiger_activity', 'time_end', 'activityid', $recordId);
+				$endTime = \vtlib\Functions::getSingleFieldValue('vtiger_activity', 'time_end', 'activityid', $recordId);
 			}
 			$date = new DateTimeField($value . ' ' . $endTime);
 			$fieldvalue = $date->getDisplayDate();
@@ -165,12 +165,12 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 			if (is_array($picklistArray[$dbField->name]) &&
 				$field->getFieldName() != 'activitytype' && !in_array(
 					$value, $picklistArray[$dbField->name])) {
-				$fieldvalue = $app_strings['LBL_NOT_ACCESSIBLE'];
+				$fieldvalue = \App\Language::translate('LBL_NOT_ACCESSIBLE');
 			} else {
-				$fieldvalue = getTranslatedString($value, $module);
+				$fieldvalue = \App\Language::translate($value, $module);
 			}
 		} else {
-			$fieldvalue = getTranslatedString($value, $module);
+			$fieldvalue = \App\Language::translate($value, $module);
 		}
 	} elseif ($fieldType == "multipicklist" && !empty($value)) {
 		if (is_array($picklistArray[1])) {
@@ -179,9 +179,9 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 			foreach ($valueList as $value) {
 				if (is_array($picklistArray[1][$dbField->name]) && !in_array(
 						$value, $picklistArray[1][$dbField->name])) {
-					$translatedValueList[] = $app_strings['LBL_NOT_ACCESSIBLE'];
+					$translatedValueList[] = \App\Language::translate('LBL_NOT_ACCESSIBLE');
 				} else {
-					$translatedValueList[] = getTranslatedString($value, $module);
+					$translatedValueList[] = \App\Language::translate($value, $module);
 				}
 			}
 		}
@@ -207,27 +207,6 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 		}
 	}
 
-	if ('vtiger_crmentity' == $dbField->table && false != strpos($dbField->name, 'Share__with__users')) {
-
-		if ($value) {
-			$listId = explode(',', $value);
-			$usersSqlFullName = getSqlForNameInDisplayFormat(['first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'], 'Users');
-			$getListUserSql = "select $usersSqlFullName as uname from vtiger_users WHERE id IN (" . generateQuestionMarks($listId) . ') ';
-			$getListUserResult = $db->pquery($getListUserSql, array($listId), TRUE);
-
-			$fieldvalue = '';
-			$finalList = array();
-
-			$listUsers = $getListUserResult->GetAll();
-
-			for ($i = 0; $i < count($listUsers); $i++) {
-				$finalList[] = $listUsers[$i][0];
-			}
-
-			$fieldvalue = implode(', ', $finalList);
-		}
-	}
-
 	if ($fieldvalue == "") {
 		return "-";
 	}
@@ -243,7 +222,6 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 		$date = new DateTimeField($fieldvalue);
 		$fieldvalue = $date->getDisplayDateTimeValue();
 	}
-
 	// Added to render html tag for description fields
 	if (!($fieldInfo['uitype'] == '19' && ($module == 'Documents' || $module == 'Emails'))) {
 		$fieldvalue = htmlentities($fieldvalue, ENT_QUOTES, $default_charset);
@@ -251,10 +229,7 @@ function getReportFieldValue($report, $picklistArray, $dbField, $valueArray, $fi
 	if ($fieldvalue !== '-' && $fieldvalue !== null && $fieldvalue !== '') {
 		switch ($fieldType) {
 			case 'double':
-			case 'currency':
-				return (double)$fieldvalue;
-			case 'boolean':
-				return (bool)$fieldvalue;
+				return (double) $fieldvalue;
 		}
 	}
 	return $fieldvalue;

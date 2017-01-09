@@ -1,5 +1,6 @@
 <?php
 /* {[The file is published on the basis of YetiForce Public License that can be found in the following directory: licenses/License.html]} */
+
 class Settings_Vtiger_Pagination_View extends Settings_Vtiger_IndexAjax_View
 {
 
@@ -49,9 +50,11 @@ class Settings_Vtiger_Pagination_View extends Settings_Vtiger_IndexAjax_View
 		}
 		$transformedSearchParams = $this->transferListSearchParamsToFilterCondition($searchParmams, $listViewModel->getModule());
 		$listViewModel->set('search_params', $transformedSearchParams);
-
+		if (!empty($searchResult) && is_array($searchResult)) {
+			$listViewModel->get('query_generator')->addNativeCondition(['vtiger_crmentity.crmid' => $searchResult]);
+		}
 		if (!$this->listViewEntries) {
-			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel, $searchResult);
+			$this->listViewEntries = $listViewModel->getListViewEntries($pagingModel);
 		}
 		if (!$this->listViewCount) {
 			$this->listViewCount = $listViewModel->getListViewCount();

@@ -239,6 +239,8 @@ jQuery.Class("Vtiger_RelatedList_Js", {}, {
 		var aDeferred = jQuery.Deferred();
 		var fieldName = headerElement.data('fieldname');
 		var sortOrderVal = headerElement.data('nextsortorderval');
+		if(typeof sortOrderVal === 'undefined')
+				return;
 		var sortingParams = {
 			"orderby": fieldName,
 			"sortorder": sortOrderVal,
@@ -527,7 +529,7 @@ jQuery.Class("Vtiger_RelatedList_Js", {}, {
 						app.showModalWindow(data, function (data) {
 							var createFollowupForm = data.find('form.followupCreateView');
 							createFollowupForm.validationEngine(app.validationEngineOptions);
-							app.registerEventForTimeFields(createFollowupForm);
+							app.registerEventForClockPicker(createFollowupForm.find('.clockPicker'));
 							//Form submit
 							createFollowupForm.submit(function (event) {
 								var createButton = jQuery(this).find('button.btn-success');
@@ -633,10 +635,10 @@ jQuery.Class("Vtiger_RelatedList_Js", {}, {
 		}
 		return aDeferred.promise();
 	},
-	registerUnreviewedCountEvent: function () {
+	registerUnreviewedCountEvent: function (container) {
 		var thisInstance = this;
 		var ids = [];
-		var listViewRelatedContentDiv = this.relatedContentContainer;
+		var listViewRelatedContentDiv = container == undefined ? this.relatedContentContainer : container;
 		var isUnreviewedActive = listViewRelatedContentDiv.find('.unreviewed').length;
 		listViewRelatedContentDiv.find('tr.listViewEntries').each(function () {
 			var id = jQuery(this).data('id');
@@ -656,11 +658,14 @@ jQuery.Class("Vtiger_RelatedList_Js", {}, {
 		};
 		AppConnector.request(actionParams).then(function (appData) {
 			var data = appData.result;
-			for (var i in data) {
-				if (data[i] > 0) {
-					listViewRelatedContentDiv.find('tr[data-id="' + i + '"] .unreviewed .badge').text(data[i]);
+			$.each(data, function (id, value) {
+				if (value.a > 0) {
+					listViewRelatedContentDiv.find('tr[data-id="' + id + '"] .unreviewed .badge.all').text(value.a);
 				}
-			}
+				if (value.m > 0) {
+					listViewRelatedContentDiv.find('tr[data-id="' + id + '"] .unreviewed .badge.mail').text(value.m);
+				}
+			});
 		});
 	},
 	init: function (parentId, parentModule, selectedRelatedTabElement, relatedModuleName) {

@@ -21,20 +21,20 @@
  * ****************************************************************************** */
 require_once 'include/database/PearDatabase.php';
 require_once 'include/utils/ListViewUtils.php';
-require_once 'include/utils/EditViewUtils.php';
 require_once 'include/utils/CommonUtils.php';
 require_once 'include/utils/InventoryUtils.php';
 require_once 'include/utils/SearchUtils.php';
-require_once 'include/FormValidationUtil.php';
-require_once 'include/events/SqlResultIterator.inc';
+require_once 'include/events/SqlResultIterator.php';
 require_once 'include/fields/DateTimeField.php';
 require_once 'include/fields/DateTimeRange.php';
 require_once 'include/fields/CurrencyField.php';
 require_once 'include/CRMEntity.php';
 include_once 'modules/Vtiger/CRMEntity.php';
-require_once 'include/ListView/ListViewSession.php';
 require_once 'include/runtime/Cache.php';
 require_once 'modules/Vtiger/helpers/Util.php';
+require_once 'modules/PickList/DependentPickListUtils.php';
+require_once 'modules/Users/Users.php';
+require_once 'include/Webservices/Utils.php';
 
 // Constants to be defined here
 // For Migration status.
@@ -42,12 +42,6 @@ define("MIG_CHARSET_PHP_UTF8_DB_UTF8", 1);
 define("MIG_CHARSET_PHP_NONUTF8_DB_NONUTF8", 2);
 define("MIG_CHARSET_PHP_NONUTF8_DB_UTF8", 3);
 define("MIG_CHARSET_PHP_UTF8_DB_NONUTF8", 4);
-
-// For Customview status.
-define("CV_STATUS_DEFAULT", 0);
-define("CV_STATUS_PRIVATE", 1);
-define("CV_STATUS_PENDING", 2);
-define("CV_STATUS_PUBLIC", 3);
 
 // For Restoration.
 define("RB_RECORD_DELETED", 'delete');
@@ -63,8 +57,8 @@ define("RB_RECORD_UPDATED", 'update');
  */
 function return_name(&$row, $first_column, $last_column)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering return_name(" . $row . "," . $first_column . "," . $last_column . ") method ...");
+
+	\App\Log::trace("Entering return_name(" . $row . "," . $first_column . "," . $last_column . ") method ...");
 	$first_name = "";
 	$last_name = "";
 	$full_name = "";
@@ -90,80 +84,8 @@ function return_name(&$row, $first_column, $last_column)
 		$full_name .= $last_name;
 	}
 
-	$log->debug("Exiting return_name method ...");
+	\App\Log::trace("Exiting return_name method ...");
 	return $full_name;
-}
-
-/** This function retrieves an application language file and returns the array of strings included in the $app_list_strings var.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- * If you are using the current language, do not call this function unless you are loading it for the first time */
-function return_app_list_strings_language($language)
-{
-	return vtlib\Deprecated::return_app_list_strings_language($language);
-}
-
-/**
- * Retrieve the app_currency_strings for the required language.
- */
-function return_app_currency_strings_language($language)
-{
-	return vtlib\Deprecated::return_app_list_strings_language($language);
-}
-
-/** This function retrieves an application language file and returns the array of strings included.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- * If you are using the current language, do not call this function unless you are loading it for the first time */
-function return_application_language($language)
-{
-	return vtlib\Deprecated::return_app_list_strings_language($language);
-}
-
-/** This function retrieves a module's language file and returns the array of strings included.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- * If you are in the current module, do not call this function unless you are loading it for the first time */
-function return_module_language($language, $module)
-{
-	return vtlib\Deprecated::getModuleTranslationStrings($language, $module);
-}
-/* This function returns the mod_strings for the current language and the specified module
- */
-
-function return_specified_module_language($language, $module)
-{
-	return vtlib\Deprecated::return_app_list_strings_language($language, $module);
-}
-
-/**
- * Return an array of directory names.
- * Portions created by SugarCRM are Copyright (C) SugarCRM, Inc.
- * All Rights Reserved.
- * Contributor(s): ______________________________________..
- */
-function get_themes()
-{
-	return Vtiger_Theme::getAllSkins();
-}
-
-/** Function to set default varibles on to the global variable
- * @param $defaults -- default values:: Type array
- */
-function set_default_config(&$defaults)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering set_default_config(" . $defaults . ") method ...");
-
-	foreach ($defaults as $name => $value) {
-		if (!isset($GLOBALS[$name])) {
-			$GLOBALS[$name] = $value;
-		}
-	}
-	$log->debug("Exiting set_default_config method ...");
 }
 $toHtml = array(
 	'"' => '&quot;',
@@ -175,74 +97,6 @@ $toHtml = array(
 	'\r\n' => '\n',
 );
 
-/** Function to convert the given string to html
- * @param $string -- string:: Type string
- * @param $encode -- boolean:: Type boolean
- * @returns $string -- string:: Type string
- *
- */
-function to_html($string, $encode = true)
-{
-	$oginalString = $string;
-	$instance = Vtiger_Cache::get('to_html', $oginalString);
-	if ($instance) {
-		return $instance;
-	}
-	$default_charset = vglobal('default_charset');
-
-	$action = AppRequest::has('action') ? AppRequest::get('action') : false;
-	$search = AppRequest::has('search') ? AppRequest::get('search') : false;
-	$ajaxAction = false;
-	$doconvert = false;
-
-	// For optimization - default_charset can be either upper / lower case.
-	static $inUTF8 = NULL;
-	if ($inUTF8 === NULL) {
-		$inUTF8 = (strtoupper($default_charset) == 'UTF-8');
-	}
-
-	if (AppRequest::has('module') && AppRequest::has('file') && AppRequest::get('module') != 'Settings' && AppRequest::get('file') != 'ListView' && AppRequest::get('module') != 'Portal' && AppRequest::get('module') != 'Reports')
-		$ajaxAction = AppRequest::get('module') . 'Ajax';
-
-	if (is_string($string)) {
-		if ($action != 'CustomView' && $action != 'Export' && $action != $ajaxAction && $action != 'LeadConvertToEntities' && $action != 'CreatePDF' && $action != 'ConvertAsFAQ' && AppRequest::get('module') != 'Dashboard' && $action != 'CreateSOPDF' && $action != 'SendPDFMail' && (!AppRequest::has('submode'))) {
-			$doconvert = true;
-		} else if ($search == true) {
-			// Fix for tickets #4647, #4648. Conversion required in case of search results also.
-			$doconvert = true;
-		}
-
-		// In vtiger5 ajax request are treated specially and the data is encoded
-		if ($doconvert == true) {
-			if ($inUTF8)
-				$string = htmlentities($string, ENT_QUOTES, $default_charset);
-			else
-				$string = preg_replace(['/</', '/>/', '/"/'], ['&lt;', '&gt;', '&quot;'], $string);
-		}
-	}
-	Vtiger_Cache::set('to_html', $oginalString, $string);
-	return $string;
-}
-
-/** Function to get the tablabel for a given id
- * @param $tabid -- tab id:: Type integer
- * @returns $string -- string:: Type string
- */
-function getTabname($tabid)
-{
-	return \vtlib\Functions::getModuleName($tabid);
-}
-
-/** Function to get the tab module name for a given id
- * @param $tabid -- tab id:: Type integer
- * @returns $string -- string:: Type string
- *
- */
-function getTabModuleName($tabid)
-{
-	return vtlib\Functions::getModuleName($tabid);
-}
-
 /** Function to get column fields for a given module
  * @param $module -- module:: Type string
  * @returns $column_fld -- column field :: Type array
@@ -250,8 +104,8 @@ function getTabModuleName($tabid)
  */
 function getColumnFields($module)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug('Entering getColumnFields(' . $module . ') method ...');
+
+	\App\Log::trace('Entering getColumnFields(' . $module . ') method ...');
 
 	// Lookup in cache for information
 	$cachedModuleFields = VTCacheUtils::lookupFieldInfo_Module($module);
@@ -272,11 +126,15 @@ function getColumnFields($module)
 
 	if ($module == 'Calendar') {
 		$cachedEventsFields = VTCacheUtils::lookupFieldInfo_Module('Events');
-		if ($cachedEventsFields) {
-			if (empty($cachedModuleFields))
-				$cachedModuleFields = $cachedEventsFields;
-			else
-				$cachedModuleFields = array_merge($cachedModuleFields, $cachedEventsFields);
+		if (!$cachedEventsFields) {
+			getColumnFields('Events');
+			$cachedEventsFields = VTCacheUtils::lookupFieldInfo_Module('Events');
+		}
+
+		if (!$cachedModuleFields) {
+			$cachedModuleFields = $cachedEventsFields;
+		} else {
+			$cachedModuleFields = array_merge($cachedModuleFields, $cachedEventsFields);
 		}
 	}
 
@@ -287,27 +145,8 @@ function getColumnFields($module)
 		}
 	}
 
-	$log->debug("Exiting getColumnFields method ...");
+	\App\Log::trace("Exiting getColumnFields method ...");
 	return $column_fld;
-}
-
-/** Function to get a users's mail id
- * @param $userid -- userid :: Type integer
- * @returns $email -- email :: Type string
- *
- */
-function getUserEmail($userid)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getUserEmail(" . $userid . ") method ...");
-	$log->info("in getUserEmail " . $userid);
-
-	$adb = PearDatabase::getInstance();
-	if ($userid != '') {
-		$email = Vtiger_Util_Helper::getUserDetail($userid, 'email1');
-	}
-	$log->debug("Exiting getUserEmail method ...");
-	return $email;
 }
 
 /** Function to get a userid for outlook
@@ -317,9 +156,9 @@ function getUserEmail($userid)
 //outlook security
 function getUserId_Ol($username)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getUserId_Ol(" . $username . ") method ...");
-	$log->info("in getUserId_Ol " . $username);
+
+	\App\Log::trace("Entering getUserId_Ol(" . $username . ") method ...");
+	\App\Log::trace("in getUserId_Ol " . $username);
 	$cache = Vtiger_Cache::getInstance();
 	if ($cache->getUserId($username) || $cache->getUserId($username) === 0) {
 		return $cache->getUserId($username);
@@ -333,7 +172,7 @@ function getUserId_Ol($username)
 		} else {
 			$user_id = 0;
 		}
-		$log->debug("Exiting getUserId_Ol method ...");
+		\App\Log::trace("Exiting getUserId_Ol method ...");
 		$cache->setUserId($username, $user_id);
 		return $user_id;
 	}
@@ -347,22 +186,20 @@ function getUserId_Ol($username)
 
 function getActionid($action)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug('Entering getActionid(' . $action . ') method ...');
+
+	\App\Log::trace('Entering getActionid(' . $action . ') method ...');
 
 	if (empty($action)) {
 		return null;
 	}
 	$actionid = Vtiger_Cache::get('getActionid', $action);
 	if ($actionid) {
-		$log->debug('Exiting getActionid method ... - ' . $actionid);
+		\App\Log::trace('Exiting getActionid method ... - ' . $actionid);
 		return $actionid;
 	}
-	if (file_exists('user_privileges/tabdata.php') && (filesize('user_privileges/tabdata.php') != 0)) {
-		include('user_privileges/tabdata.php');
-		if (isset($action_id_array[$action])) {
-			$actionid = $action_id_array[$action];
-		}
+	$actionIds = \App\Module::getTabData('actionId');
+	if (isset($actionIds[$action])) {
+		$actionid = $actionIds[$action];
 	}
 	if (empty($actionid)) {
 		$db = PearDatabase::getInstance();
@@ -371,7 +208,7 @@ function getActionid($action)
 		$actionid = $db->getSingleValue($result);
 	}
 	Vtiger_Cache::set('getActionid', $action, $actionid);
-	$log->debug('Exiting getActionid method ... - ' . $actionid);
+	\App\Log::trace('Exiting getActionid method ... - ' . $actionid);
 	return $actionid;
 }
 
@@ -381,13 +218,13 @@ function getActionid($action)
  */
 function getActionname($actionid)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug('Entering getActionname(' . $actionid . ') method ...');
+
+	\App\Log::trace('Entering getActionname(' . $actionid . ') method ...');
 	$adb = PearDatabase::getInstance();
 
 	$actionName = Vtiger_Cache::get('getActionName', $actionid);
 	if ($actionName) {
-		$log->debug('Exiting getActionname method ...');
+		\App\Log::trace('Exiting getActionname method ...');
 		return $actionName;
 	}
 	if (file_exists('user_privileges/tabdata.php') && (filesize('user_privileges/tabdata.php') != 0)) {
@@ -399,7 +236,7 @@ function getActionname($actionid)
 		$actionName = $adb->getSingleValue($result);
 	}
 	Vtiger_Cache::set('getActionName', $actionid, $actionName);
-	$log->debug('Exiting getActionname method ...');
+	\App\Log::trace('Exiting getActionname method ...');
 	return $actionName;
 }
 
@@ -409,59 +246,18 @@ function getActionname($actionid)
  */
 function getRecordOwnerId($record)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getRecordOwnerId($record) method ...");
+
+	\App\Log::trace("Entering getRecordOwnerId($record) method ...");
 	$ownerArr = [];
 
 	$recordMetaData = vtlib\Functions::getCRMRecordMetadata($record);
 	if ($recordMetaData) {
 		$ownerId = $recordMetaData['smownerid'];
-		$type = \includes\fields\Owner::getType($ownerId);
+		$type = \App\Fields\Owner::getType($ownerId);
 		$ownerArr[$type] = $ownerId;
 	}
-	$log->debug('Exiting getRecordOwnerId method ...');
+	\App\Log::trace('Exiting getRecordOwnerId method ...');
 	return $ownerArr;
-}
-
-/** Function to insert value to profile2field table
- * @param $profileid -- profileid :: Type integer
- */
-function insertProfile2field($profileid)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering insertProfile2field(" . $profileid . ") method ...");
-	$log->info("in insertProfile2field " . $profileid);
-
-	$adb = PearDatabase::getInstance();
-	$adb->database->SetFetchMode(ADODB_FETCH_ASSOC);
-	$fld_result = $adb->pquery("select * from vtiger_field where generatedtype=1 and displaytype in (1,2,3) and vtiger_field.presence in (0,2) and tabid != 29", []);
-	$num_rows = $adb->num_rows($fld_result);
-	for ($i = 0; $i < $num_rows; $i++) {
-		$tab_id = $adb->query_result($fld_result, $i, 'tabid');
-		$field_id = $adb->query_result($fld_result, $i, 'fieldid');
-		$params = array($profileid, $tab_id, $field_id, 0, 0);
-		$adb->pquery("insert into vtiger_profile2field values (?,?,?,?,?)", $params);
-	}
-	$log->debug("Exiting insertProfile2field method ...");
-}
-
-/** Function to insert into default org field
- */
-function insert_def_org_field()
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering insert_def_org_field() method ...");
-	$adb = PearDatabase::getInstance();
-	$adb->database->SetFetchMode(ADODB_FETCH_ASSOC);
-	$fld_result = $adb->pquery("select * from vtiger_field where generatedtype=1 and displaytype in (1,2,3) and vtiger_field.presence in (0,2) and tabid != 29", []);
-	$num_rows = $adb->num_rows($fld_result);
-	for ($i = 0; $i < $num_rows; $i++) {
-		$tab_id = $adb->query_result($fld_result, $i, 'tabid');
-		$field_id = $adb->query_result($fld_result, $i, 'fieldid');
-		$params = array($tab_id, $field_id, 0, 0);
-		$adb->pquery("insert into vtiger_def_org_field values (?,?,?,?)", $params);
-	}
-	$log->debug("Exiting insert_def_org_field() method ...");
 }
 
 /** Function to update product quantity
@@ -470,247 +266,12 @@ function insert_def_org_field()
  */
 function updateProductQty($product_id, $upd_qty)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering updateProductQty(" . $product_id . "," . $upd_qty . ") method ...");
+
+	\App\Log::trace("Entering updateProductQty(" . $product_id . "," . $upd_qty . ") method ...");
 	$adb = PearDatabase::getInstance();
 	$query = "update vtiger_products set qtyinstock=? where productid=?";
 	$adb->pquery($query, array($upd_qty, $product_id));
-	$log->debug("Exiting updateProductQty method ...");
-}
-
-/** This Function adds the specified product quantity to the Product Quantity in Stock in the Warehouse
- * The following is the input parameter for the function:
- *  $productId --> ProductId, Type:Integer
- *  $qty --> Quantity to be added, Type:Integer
- */
-function addToProductStock($productId, $qty)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering addToProductStock(" . $productId . "," . $qty . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$qtyInStck = getProductQtyInStock($productId);
-	$updQty = $qtyInStck + $qty;
-	$sql = "UPDATE vtiger_products set qtyinstock=? where productid=?";
-	$adb->pquery($sql, array($updQty, $productId));
-	$log->debug("Exiting addToProductStock method ...");
-}
-
-/** 	This Function adds the specified product quantity to the Product Quantity in Demand in the Warehouse
- * 	@param int $productId - ProductId
- * 	@param int $qty - Quantity to be added
- */
-function addToProductDemand($productId, $qty)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering addToProductDemand(" . $productId . "," . $qty . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$qtyInStck = getProductQtyInDemand($productId);
-	$updQty = $qtyInStck + $qty;
-	$sql = "UPDATE vtiger_products set qtyindemand=? where productid=?";
-	$adb->pquery($sql, array($updQty, $productId));
-	$log->debug("Exiting addToProductDemand method ...");
-}
-
-/** 	This Function subtract the specified product quantity to the Product Quantity in Stock in the Warehouse
- * 	@param int $productId - ProductId
- * 	@param int $qty - Quantity to be subtracted
- */
-function deductFromProductStock($productId, $qty)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering deductFromProductStock(" . $productId . "," . $qty . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$qtyInStck = getProductQtyInStock($productId);
-	$updQty = $qtyInStck - $qty;
-	$sql = "UPDATE vtiger_products set qtyinstock=? where productid=?";
-	$adb->pquery($sql, array($updQty, $productId));
-	$log->debug("Exiting deductFromProductStock method ...");
-}
-
-/** 	This Function subtract the specified product quantity to the Product Quantity in Demand in the Warehouse
- * 	@param int $productId - ProductId
- * 	@param int $qty - Quantity to be subtract
- */
-function deductFromProductDemand($productId, $qty)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering deductFromProductDemand(" . $productId . "," . $qty . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$qtyInStck = getProductQtyInDemand($productId);
-	$updQty = $qtyInStck - $qty;
-	$sql = "UPDATE vtiger_products set qtyindemand=? where productid=?";
-	$adb->pquery($sql, array($updQty, $productId));
-	$log->debug("Exiting deductFromProductDemand method ...");
-}
-
-/** This Function returns the current product quantity in stock.
- * The following is the input parameter for the function:
- *  $product_id --> ProductId, Type:Integer
- */
-function getProductQtyInStock($product_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getProductQtyInStock(" . $product_id . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$query1 = "select qtyinstock from vtiger_products where productid=?";
-	$result = $adb->pquery($query1, array($product_id));
-	$qtyinstck = $adb->query_result($result, 0, "qtyinstock");
-	$log->debug("Exiting getProductQtyInStock method ...");
-	return $qtyinstck;
-}
-
-/** 	This Function returns the current product quantity in demand.
- * 	@param int $product_id - ProductId
- * 	@return int $qtyInDemand - Quantity in Demand of a product
- */
-function getProductQtyInDemand($product_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getProductQtyInDemand(" . $product_id . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$query1 = "select qtyindemand from vtiger_products where productid=?";
-	$result = $adb->pquery($query1, array($product_id));
-	$qtyInDemand = $adb->query_result($result, 0, "qtyindemand");
-	$log->debug("Exiting getProductQtyInDemand method ...");
-	return $qtyInDemand;
-}
-
-/**     Function to get the vtiger_table name from 'field' vtiger_table for the input vtiger_field based on the module
- *      @param  : string $module - current module value
- *      @param  : string $fieldname - vtiger_fieldname to which we want the vtiger_tablename
- *      @return : string $tablename - vtiger_tablename in which $fieldname is a column, which is retrieved from 'field' vtiger_table per $module basis
- */
-function getTableNameForField($module, $fieldname)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getTableNameForField(" . $module . "," . $fieldname . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$tabid = getTabid($module);
-	//Asha
-	if ($module == 'Calendar') {
-		$tabid = array('9', '16');
-	}
-	$sql = sprintf("select tablename from vtiger_field where tabid in (%s) and vtiger_field.presence in (0,2) and columnname like ?", generateQuestionMarks($tabid));
-	$res = $adb->pquery($sql, array($tabid, '%' . $fieldname . '%'));
-
-	$tablename = '';
-	if ($adb->num_rows($res) > 0) {
-		$tablename = $adb->query_result($res, 0, 'tablename');
-	}
-
-	$log->debug("Exiting getTableNameForField method ...");
-	return $tablename;
-}
-
-/** Function to get parent record owner
- * @param $tabid -- tabid :: Type integer
- * @param $parModId -- parent module id :: Type integer
- * @param $record_id -- record id :: Type integer
- * @returns $parentRecOwner -- parentRecOwner:: Type integer
- */
-function getParentRecordOwner($tabid, $parModId, $record_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getParentRecordOwner(" . $tabid . "," . $parModId . "," . $record_id . ") method ...");
-	$parentRecOwner = [];
-	$parentTabName = \vtlib\Functions::getModuleName($parModId);
-	$relTabName = \vtlib\Functions::getModuleName($tabid);
-	$fn_name = "get" . $relTabName . "Related" . $parentTabName;
-	$ent_id = $fn_name($record_id);
-	if ($ent_id != '') {
-		$parentRecOwner = getRecordOwnerId($ent_id);
-	}
-	$log->debug("Exiting getParentRecordOwner method ...");
-	return $parentRecOwner;
-}
-
-/** Function to get email related accounts
- * @param $record_id -- record id :: Type integer
- * @returns $accountid -- accountid:: Type integer
- */
-function getEmailsRelatedAccounts($record_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getEmailsRelatedAccounts(" . $record_id . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$query = "select vtiger_seactivityrel.crmid from vtiger_seactivityrel inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_seactivityrel.crmid where vtiger_crmentity.setype='Accounts' and activityid=?";
-	$result = $adb->pquery($query, array($record_id));
-	$accountid = $adb->query_result($result, 0, 'crmid');
-	$log->debug("Exiting getEmailsRelatedAccounts method ...");
-	return $accountid;
-}
-
-/** Function to get email related Leads
- * @param $record_id -- record id :: Type integer
- * @returns $leadid -- leadid:: Type integer
- */
-function getEmailsRelatedLeads($record_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getEmailsRelatedLeads(" . $record_id . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$query = "select vtiger_seactivityrel.crmid from vtiger_seactivityrel inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_seactivityrel.crmid where vtiger_crmentity.setype='Leads' and activityid=?";
-	$result = $adb->pquery($query, array($record_id));
-	$leadid = $adb->query_result($result, 0, 'crmid');
-	$log->debug("Exiting getEmailsRelatedLeads method ...");
-	return $leadid;
-}
-
-/** Function to get HelpDesk related Accounts
- * @param $record_id -- record id :: Type integer
- * @returns $accountid -- accountid:: Type integer
- */
-function getHelpDeskRelatedAccounts($record_id)
-{
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getHelpDeskRelatedAccounts(" . $record_id . ") method ...");
-	$adb = PearDatabase::getInstance();
-	$query = "select parent_id from vtiger_troubletickets inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_troubletickets.parent_id where ticketid=? and vtiger_crmentity.setype='Accounts'";
-	$result = $adb->pquery($query, array($record_id));
-	$accountid = $adb->query_result($result, 0, 'parent_id');
-	$log->debug("Exiting getHelpDeskRelatedAccounts method ...");
-	return $accountid;
-}
-
-/**
- * the function is like unescape in javascript
- * added by dingjianting on 2006-10-1 for picklist editor
- */
-function utf8RawUrlDecode($source)
-{
-	global $default_charset;
-	$decodedStr = "";
-	$pos = 0;
-	$len = strlen($source);
-	while ($pos < $len) {
-		$charAt = substr($source, $pos, 1);
-		if ($charAt == '%') {
-			$pos++;
-			$charAt = substr($source, $pos, 1);
-			if ($charAt == 'u') {
-				// we got a unicode character
-				$pos++;
-				$unicodeHexVal = substr($source, $pos, 4);
-				$unicode = hexdec($unicodeHexVal);
-				$entity = "&#" . $unicode . ';';
-				$decodedStr .= utf8_encode($entity);
-				$pos += 4;
-			} else {
-				// we have an escaped ascii character
-				$hexVal = substr($source, $pos, 2);
-				$decodedStr .= chr(hexdec($hexVal));
-				$pos += 2;
-			}
-		} else {
-			$decodedStr .= $charAt;
-			$pos++;
-		}
-	}
-	if (strtolower($default_charset) == 'utf-8')
-		return html_to_utf8($decodedStr);
-	else
-		return $decodedStr;
-	//return html_to_utf8($decodedStr);
+	\App\Log::trace("Exiting updateProductQty method ...");
 }
 
 /**
@@ -800,7 +361,7 @@ function formatForSqlLike($str, $flag = 0, $is_field = false)
 {
 	$adb = PearDatabase::getInstance();
 	if (isset($str)) {
-		if ($is_field == false) {
+		if ($is_field === false) {
 			$str = str_replace('%', '\%', $str);
 			$str = str_replace('_', '\_', $str);
 			if ($flag == 0) {
@@ -827,74 +388,6 @@ function formatForSqlLike($str, $flag = 0, $is_field = false)
 	return $adb->sql_escape_string($str);
 }
 
-/** 	Function used to get all the picklists and their values for a module
-  @param string $module - Module name to which the list of picklists and their values needed
-  @return array $fieldlists - Array of picklists and their values
- * */
-function getAccessPickListValues($module)
-{
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$current_user = vglobal('current_user');
-	$log->debug("Entering into function getAccessPickListValues($module)");
-
-	$id = getTabid($module);
-	$query = "select fieldname,columnname,fieldid,fieldlabel,tabid,uitype from vtiger_field where tabid = ? and uitype in ('15','33','55') and vtiger_field.presence in (0,2)";
-	$result = $adb->pquery($query, array($id));
-
-	$roleid = $current_user->roleid;
-	$subrole = getRoleSubordinates($roleid);
-
-	if (count($subrole) > 0) {
-		$roleids = $subrole;
-		array_push($roleids, $roleid);
-	} else {
-		$roleids = $roleid;
-	}
-
-	$temp_status = [];
-	for ($i = 0; $i < $adb->num_rows($result); $i++) {
-		$fieldname = $adb->query_result($result, $i, "fieldname");
-		$fieldlabel = $adb->query_result($result, $i, "fieldlabel");
-		$columnname = $adb->query_result($result, $i, "columnname");
-		$tabid = $adb->query_result($result, $i, "tabid");
-		$uitype = $adb->query_result($result, $i, "uitype");
-
-		$keyvalue = $columnname;
-		$fieldvalues = [];
-		if (count($roleids) > 1) {
-			$mulsel = "select distinct $fieldname from vtiger_$fieldname inner join vtiger_role2picklist on vtiger_role2picklist.picklistvalueid = vtiger_$fieldname.picklist_valueid where roleid in (\"" . implode($roleids, "\",\"") . "\") and picklistid in (select picklistid from vtiger_$fieldname) order by sortid asc";
-		} else {
-			$mulsel = "select distinct $fieldname from vtiger_$fieldname inner join vtiger_role2picklist on vtiger_role2picklist.picklistvalueid = vtiger_$fieldname.picklist_valueid where roleid ='" . $roleid . "' and picklistid in (select picklistid from vtiger_$fieldname) order by sortid asc";
-		}
-		if ($fieldname != 'firstname')
-			$mulselresult = $adb->query($mulsel);
-		for ($j = 0; $j < $adb->num_rows($mulselresult); $j++) {
-			$fieldvalues[] = $adb->query_result($mulselresult, $j, $fieldname);
-		}
-		$field_count = count($fieldvalues);
-		if ($uitype == 15 && $field_count > 0 && ($fieldname == 'activitystatus')) {
-			$temp_count = count($temp_status[$keyvalue]);
-			if ($temp_count > 0) {
-				for ($t = 0; $t < $field_count; $t++) {
-					$temp_status[$keyvalue][($temp_count + $t)] = $fieldvalues[$t];
-				}
-				$fieldvalues = $temp_status[$keyvalue];
-			} else
-				$temp_status[$keyvalue] = $fieldvalues;
-		}
-		if ($uitype == 33)
-			$fieldlists[1][$keyvalue] = $fieldvalues;
-		else if ($uitype == 55 && $fieldname == 'salutationtype')
-			$fieldlists[$keyvalue] = $fieldvalues;
-		else if ($uitype == 15)
-			$fieldlists[$keyvalue] = $fieldvalues;
-	}
-	$log->debug("Exit from function getAccessPickListValues($module)");
-
-	return $fieldlists;
-}
-
 /** Function to get on clause criteria for duplicate check queries */
 function get_on_clause($field_list, $uitype_arr, $module)
 {
@@ -916,92 +409,6 @@ function get_on_clause($field_list, $uitype_arr, $module)
 	return $ret_str;
 }
 
-// Update all the data refering to currency $old_cur to $new_cur
-function transferCurrency($old_cur, $new_cur)
-{
-
-	// Transfer User currency to new currency
-	transferUserCurrency($old_cur, $new_cur);
-
-	// Transfer Product Currency to new currency
-	transferProductCurrency($old_cur, $new_cur);
-
-	// Transfer PriceBook Currency to new currency
-	transferPriceBookCurrency($old_cur, $new_cur);
-}
-
-// Function to transfer the users with currency $old_cur to $new_cur as currency
-function transferUserCurrency($old_cur, $new_cur)
-{
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$current_user = vglobal('current_user');
-	$log->debug("Entering function transferUserCurrency...");
-
-	$sql = "update vtiger_users set currency_id=? where currency_id=?";
-	$adb->pquery($sql, array($new_cur, $old_cur));
-
-	$current_user->retrieve_entity_info($current_user->id, "Users");
-	$log->debug("Exiting function transferUserCurrency...");
-}
-
-// Function to transfer the products with currency $old_cur to $new_cur as currency
-function transferProductCurrency($old_cur, $new_cur)
-{
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering function updateProductCurrency...");
-	$prod_res = $adb->pquery("select productid from vtiger_products where currency_id = ?", array($old_cur));
-	$numRows = $adb->num_rows($prod_res);
-	$prod_ids = [];
-	for ($i = 0; $i < $numRows; $i++) {
-		$prod_ids[] = $adb->query_result($prod_res, $i, 'productid');
-	}
-	if (count($prod_ids) > 0) {
-		$prod_price_list = getPricesForProducts($new_cur, $prod_ids);
-
-		for ($i = 0; $i < count($prod_ids); $i++) {
-			$product_id = $prod_ids[$i];
-			$unit_price = $prod_price_list[$product_id];
-			$query = "update vtiger_products set currency_id=?, unit_price=? where productid=?";
-			$params = array($new_cur, $unit_price, $product_id);
-			$adb->pquery($query, $params);
-		}
-	}
-	$log->debug("Exiting function updateProductCurrency...");
-}
-
-// Function to transfer the pricebooks with currency $old_cur to $new_cur as currency
-// and to update the associated products with list price in $new_cur currency
-function transferPriceBookCurrency($old_cur, $new_cur)
-{
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering function updatePriceBookCurrency...");
-	$pb_res = $adb->pquery("select pricebookid from vtiger_pricebook where currency_id = ?", array($old_cur));
-	$numRows = $adb->num_rows($pb_res);
-	$pb_ids = [];
-	for ($i = 0; $i < $numRows; $i++) {
-		$pb_ids[] = $adb->query_result($pb_res, $i, 'pricebookid');
-	}
-
-	if (count($pb_ids) > 0) {
-		require_once('modules/PriceBooks/PriceBooks.php');
-
-		for ($i = 0; $i < count($pb_ids); $i++) {
-			$pb_id = $pb_ids[$i];
-			$focus = new PriceBooks();
-			$focus->id = $pb_id;
-			$focus->mode = 'edit';
-			$focus->retrieve_entity_info($pb_id, "PriceBooks");
-			$focus->column_fields['currency_id'] = $new_cur;
-			$focus->save("PriceBooks");
-		}
-	}
-
-	$log->debug("Exiting function updatePriceBookCurrency...");
-}
-
 /**
  * this function searches for a given number in vtiger and returns the callerInfo in an array format
  * currently the search is made across only leads, accounts and contacts modules
@@ -1012,7 +419,7 @@ function transferPriceBookCurrency($old_cur, $new_cur)
 function getCallerInfo($number)
 {
 	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
+
 	if (empty($number)) {
 		return false;
 	}
@@ -1044,7 +451,7 @@ function getCallerInfo($number)
 function get_use_asterisk($id)
 {
 	$adb = PearDatabase::getInstance();
-	if (!\includes\Modules::isModuleActive('PBXManager') || isPermitted('PBXManager', 'index') == 'no') {
+	if (!\App\Module::isModuleActive('PBXManager') || isPermitted('PBXManager', 'index') == 'no') {
 		return false;
 	}
 	$sql = "select * from vtiger_asteriskextensions where userid = ?";
@@ -1062,75 +469,6 @@ function get_use_asterisk($id)
 	}
 }
 
-/**
- * this function adds a record to the callhistory module
- *
- * @param string $userExtension - the extension of the current user
- * @param string $callfrom - the caller number
- * @param string $callto - the called number
- * @param string $status - the status of the call (outgoing/incoming/missed)
- * @param object $adb - the peardatabase object
- */
-function addToCallHistory($userExtension, $callfrom, $callto, $status, $adb, $useCallerInfo)
-{
-	$sql = "select * from vtiger_asteriskextensions where asterisk_extension=?";
-	$result = $adb->pquery($sql, array($userExtension));
-	$userID = $adb->query_result($result, 0, "userid");
-	if (empty($userID)) {
-		// we have observed call to extension not configured in Vtiger will returns NULL
-		return;
-	}
-	if (empty($callfrom)) {
-		$callfrom = "Unknown";
-	}
-	if (empty($callto)) {
-		$callto = "Unknown";
-	}
-
-	if ($status == 'outgoing') {
-		//call is from user to record
-		$sql = "select * from vtiger_asteriskextensions where asterisk_extension=?";
-		$result = $adb->pquery($sql, array($callfrom));
-		if ($adb->num_rows($result) > 0) {
-			$userid = $adb->query_result($result, 0, "userid");
-			$callerName = \includes\fields\Owner::getUserLabel($userid);
-		}
-
-		$receiver = $useCallerInfo;
-		if (empty($receiver)) {
-			$receiver = "Unknown";
-		} else {
-			$receiver = "<a href='index.php?module=" . $receiver['module'] . "&action=DetailView&record=" . $receiver['id'] . "'>" . $receiver['name'] . "</a>";
-		}
-	} else {
-		//call is from record to user
-		$sql = "select * from vtiger_asteriskextensions where asterisk_extension=?";
-		$result = $adb->pquery($sql, array($callto));
-		if ($adb->num_rows($result) > 0) {
-			$userid = $adb->query_result($result, 0, "userid");
-			$receiver = \includes\fields\Owner::getUserLabel($userid);
-		}
-		$callerName = $useCallerInfo;
-		if (empty($callerName)) {
-			$callerName = "Unknown $callfrom";
-		} else {
-			$callerName = "<a href='index.php?module=" . $callerName['module'] . "&action=DetailView&record=" . $callerName['id'] . "'>" . decode_html($callerName['name']) . "</a>";
-		}
-	}
-
-	$crmID = $adb->getUniqueID('vtiger_crmentity');
-	$timeOfCall = date('Y-m-d H:i:s');
-
-	$query = "INSERT INTO vtiger_crmentity (crmid,smcreatorid,smownerid,modifiedby,setype,description,createdtime,
-			modifiedtime,viewedtime,status,version,presence,deleted) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-	$adb->pquery($query, array($crmID, $userID, $userID, 0, "PBXManager", "", $timeOfCall, $timeOfCall, NULL, NULL, 0, 1, 0));
-	$adb->pquery("INSERT INTO u_yf_crmentity_label INNER JOIN (crmid,label) VALUES (?,?)", [$crmID, $callerName]);
-	$sql = "insert into vtiger_pbxmanager (pbxmanagerid,callfrom,callto,timeofcall,status)values (?,?,?,?,?)";
-	$params = array($crmID, $callerName, $receiver, $timeOfCall, $status);
-	$adb->pquery($sql, $params);
-	return $crmID;
-}
-
 //functions for asterisk integration end
 
 /* Function to get the related tables data
@@ -1144,7 +482,7 @@ function getRelationTables($module, $secmodule)
 	$primary_obj = CRMEntity::getInstance($module);
 	$secondary_obj = CRMEntity::getInstance($secmodule);
 
-	$ui10_query = $adb->pquery("SELECT vtiger_field.tabid AS tabid,vtiger_field.tablename AS tablename, vtiger_field.columnname AS columnname FROM vtiger_field INNER JOIN vtiger_fieldmodulerel ON vtiger_fieldmodulerel.fieldid = vtiger_field.fieldid WHERE (vtiger_fieldmodulerel.module=? AND vtiger_fieldmodulerel.relmodule=?) OR (vtiger_fieldmodulerel.module=? AND vtiger_fieldmodulerel.relmodule=?)", array($module, $secmodule, $secmodule, $module));
+	$ui10_query = $adb->pquery("SELECT vtiger_field.tabid AS tabid,vtiger_field.tablename AS tablename, vtiger_field.columnname AS columnname FROM vtiger_field INNER JOIN vtiger_fieldmodulerel ON vtiger_fieldmodulerel.fieldid = vtiger_field.fieldid WHERE (vtiger_fieldmodulerel.module=? && vtiger_fieldmodulerel.relmodule=?) || (vtiger_fieldmodulerel.module=? && vtiger_fieldmodulerel.relmodule=?)", array($module, $secmodule, $secmodule, $module));
 	if ($adb->num_rows($ui10_query) > 0) {
 		$ui10_tablename = $adb->query_result($ui10_query, 0, 'tablename');
 		$ui10_columnname = $adb->query_result($ui10_query, 0, 'columnname');
@@ -1184,30 +522,24 @@ function getRelationTables($module, $secmodule)
  */
 function DeleteEntity($destinationModule, $sourceModule, $focus, $destinationRecordId, $sourceRecordId, $relatedName = false)
 {
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering DeleteEntity method ($destinationModule, $sourceModule, $destinationRecordId, $sourceRecordId)");
-	require_once('include/events/include.inc');
+	\App\Log::trace("Entering DeleteEntity method ($destinationModule, $sourceModule, $destinationRecordId, $sourceRecordId)");
+	require_once('include/events/include.php');
 	if ($destinationModule != $sourceModule && !empty($sourceModule) && !empty($sourceRecordId)) {
-		$em = new VTEventsManager($adb);
-		$em->initTriggerCache();
-
-		$data = [];
-		$data['CRMEntity'] = $focus;
-		$data['entityData'] = VTEntityData::fromEntityId($adb, $destinationRecordId);
-		$data['sourceModule'] = $sourceModule;
-		$data['sourceRecordId'] = $sourceRecordId;
-		$data['destinationModule'] = $destinationModule;
-		$data['destinationRecordId'] = $destinationRecordId;
-		$em->triggerEvent('vtiger.entity.unlink.before', $data);
+		$eventHandler = new App\EventHandler();
+		$eventHandler->setModuleName($sourceModule);
+		$eventHandler->setParams([
+			'CRMEntity' => $focus,
+			'sourceModule' => $sourceModule,
+			'sourceRecordId' => $sourceRecordId,
+			'destinationModule' => $destinationModule,
+			'destinationRecordId' => $destinationRecordId,
+		]);
+		$eventHandler->trigger('EntityBeforeUnLink');
 
 		$focus->unlinkRelationship($destinationRecordId, $sourceModule, $sourceRecordId, $relatedName);
 		$focus->trackUnLinkedInfo($sourceModule, $sourceRecordId, $destinationModule, $destinationRecordId);
 
-		if ($em) {
-			$entityData = VTEntityData::fromEntityId($adb, $destinationRecordId);
-			$em->triggerEvent('vtiger.entity.unlink.after', $data);
-		}
+		$eventHandler->trigger('EntityAfterUnLink');
 	} else {
 		$currentUserPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		if (!$currentUserPrivilegesModel->isPermitted($destinationModule, 'Delete', $destinationRecordId)) {
@@ -1215,7 +547,7 @@ function DeleteEntity($destinationModule, $sourceModule, $focus, $destinationRec
 		}
 		$focus->trash($destinationModule, $destinationRecordId);
 	}
-	$log->debug('Exiting DeleteEntity method ...');
+	\App\Log::trace('Exiting DeleteEntity method ...');
 }
 
 /**
@@ -1223,175 +555,27 @@ function DeleteEntity($destinationModule, $sourceModule, $focus, $destinationRec
  */
 function relateEntities($focus, $sourceModule, $sourceRecordId, $destinationModule, $destinationRecordIds, $relatedName = false)
 {
-	$adb = PearDatabase::getInstance();
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering relateEntities method ($sourceModule, $sourceRecordId, $destinationModule, $destinationRecordIds)");
-	require_once('include/events/include.inc');
-	//require_once('modules/com_vtiger_workflow/VTWorkflowManager.inc');
-	//require_once('modules/com_vtiger_workflow/VTEntityCache.inc');
-	$em = new VTEventsManager($adb);
-	$em->initTriggerCache();
+	\App\Log::trace("Entering relateEntities method ($sourceModule, $sourceRecordId, $destinationModule, $destinationRecordIds)");
 	if (!is_array($destinationRecordIds))
 		$destinationRecordIds = [$destinationRecordIds];
 
-	$data = [];
-	$data['CRMEntity'] = $focus;
-	$data['entityData'] = VTEntityData::fromEntityId($adb, $sourceRecordId);
-	$data['sourceModule'] = $sourceModule;
-	$data['sourceRecordId'] = $sourceRecordId;
-	$data['destinationModule'] = $destinationModule;
-	foreach ($destinationRecordIds as $destinationRecordId) {
+	$data = [
+		'CRMEntity' => $focus,
+		'sourceModule' => $sourceModule,
+		'sourceRecordId' => $sourceRecordId,
+		'destinationModule' => $destinationModule,
+	];
+	$eventHandler = new App\EventHandler();
+	$eventHandler->setModuleName($sourceModule);
+	foreach ($destinationRecordIds as &$destinationRecordId) {
 		$data['destinationRecordId'] = $destinationRecordId;
-		$em->triggerEvent('vtiger.entity.link.before', $data);
+		$eventHandler->setParams($data);
+		$eventHandler->trigger('EntityBeforeLink');
 		$focus->save_related_module($sourceModule, $sourceRecordId, $destinationModule, $destinationRecordId, $relatedName);
-		$focus->trackLinkedInfo($sourceModule, $sourceRecordId, $destinationModule, $destinationRecordId);
-		/*
-		  $wfs = new VTWorkflowManager($adb);
-		  $workflows = $wfs->getWorkflowsForModule($sourceModule, VTWorkflowManager::$ON_RELATED);
-		  $entityCache = new VTEntityCache(Users_Record_Model::getCurrentUserModel());
-		  $entityData = VTEntityData::fromCRMEntity($focus);
-		  $entityData->eventType = VTWorkflowManager::$ON_RELATED;
-		  $entityData->relatedInfo = [
-		  'destId' => $destinationRecordId,
-		  'destModule' => $destinationModule,
-		  ];
-		  foreach ($workflows as $id => $workflow) {
-		  if ($workflow->evaluate($entityCache, $entityData->getId())) {
-		  $workflow->performTasks($entityData);
-		  }
-		  }
-		 */
-		$em->triggerEvent('vtiger.entity.link.after', $data);
+		CRMEntity::trackLinkedInfo($sourceRecordId);
+		$eventHandler->trigger('EntityAfterLink');
 	}
-	$log->debug("Exiting relateEntities method ...");
-}
-/**
- * Track install/update vtlib module in current run.
- */
-$_installOrUpdateVtlibModule = [];
-
-/* Function to install Vtlib Compliant modules
- * @param - $packagename - Name of the module
- * @param - $packagepath - Complete path to the zip file of the Module
- */
-
-function installVtlibModule($packagename, $packagepath, $customized = false)
-{
-	global $log, $Vtiger_Utils_Log, $_installOrUpdateVtlibModule;
-	if (!file_exists($packagepath))
-		return;
-
-	if (isset($_installOrUpdateVtlibModule[$packagename . $packagepath]))
-		return;
-	$_installOrUpdateVtlibModule[$packagename . $packagepath] = 'install';
-
-	$Vtiger_Utils_Log = defined('INSTALLATION_MODE_DEBUG') ? INSTALLATION_MODE_DEBUG : true;
-	$package = new vtlib\Package();
-
-	if ($package->isLanguageType($packagepath)) {
-		$package = new vtlib\Language();
-		$package->import($packagepath, true);
-		return;
-	}
-	$module = $package->getModuleNameFromZip($packagepath);
-
-	// Customization
-	if ($package->isLanguageType()) {
-		$languagePack = new vtlib\Language();
-		@$languagePack->import($packagepath, true);
-		return;
-	}
-	// END
-
-	$module_exists = false;
-	$module_dir_exists = false;
-	if ($module == null) {
-		$log->fatal("$packagename Module zipfile is not valid!");
-	} else if (vtlib\Module::getInstance($module)) {
-		$log->fatal("$module already exists!");
-		$module_exists = true;
-	}
-	if ($module_exists == false) {
-		$log->debug("$module - Installation starts here");
-		$package->import($packagepath, true);
-		$moduleInstance = vtlib\Module::getInstance($module);
-		if (empty($moduleInstance)) {
-			$log->fatal("$module module installation failed!");
-		}
-	}
-}
-/* Function to update Vtlib Compliant modules
- * @param - $module - Name of the module
- * @param - $packagepath - Complete path to the zip file of the Module
- */
-
-function updateVtlibModule($module, $packagepath)
-{
-	global $log, $_installOrUpdateVtlibModule;
-	if (!file_exists($packagepath))
-		return;
-
-	if (isset($_installOrUpdateVtlibModule[$module . $packagepath]))
-		return;
-	$_installOrUpdateVtlibModule[$module . $packagepath] = 'update';
-
-	$Vtiger_Utils_Log = defined('INSTALLATION_MODE_DEBUG') ? INSTALLATION_MODE_DEBUG : true;
-	$package = new vtlib\Package();
-
-	if ($package->isLanguageType($packagepath)) {
-		$languagePack = new vtlib\Language();
-		$languagePack->update(null, $packagepath, true);
-		return;
-	}
-
-	if ($module == null) {
-		$log->fatal("Module name is invalid");
-	} else {
-		$moduleInstance = vtlib\Module::getInstance($module);
-		if ($moduleInstance || $package->isModuleBundle($packagepath)) {
-			$log->debug("$module - Module instance found - Update starts here");
-			$package->update($moduleInstance, $packagepath);
-		} else {
-			$log->fatal("$module doesn't exists!");
-		}
-	}
-}
-
-/**
- * this function checks if a given column exists in a given table or not
- * @param string $columnName - the columnname
- * @param string $tableName - the tablename
- * @return boolean $status - true if column exists; false otherwise
- */
-function columnExists($columnName, $tableName)
-{
-	$adb = PearDatabase::getInstance();
-	$columnNames = [];
-	$columnNames = $adb->getColumnNames($tableName);
-
-	if (in_array($columnName, $columnNames)) {
-		return true;
-	} else {
-		return false;
-	}
-}
-/* To get modules list for which work flow and field formulas is permitted */
-
-function com_vtGetModules($adb)
-{
-	$sql = "select distinct vtiger_field.tabid, name
-		from vtiger_field
-		inner join vtiger_tab
-			on vtiger_field.tabid=vtiger_tab.tabid
-		where vtiger_field.tabid not in(9,10,16,15,29) and vtiger_tab.presence = 0 and vtiger_tab.isentitytype=1";
-	$it = new SqlResultIterator($adb, $adb->query($sql));
-	$modules = [];
-	foreach ($it as $row) {
-		if (isPermitted($row->name, 'index') == "yes") {
-			$modules[$row->name] = getTranslatedString($row->name);
-		}
-	}
-	return $modules;
+	\App\Log::trace("Exiting relateEntities method ...");
 }
 
 /**
@@ -1410,8 +594,8 @@ function isRecordExists($recordId, $cache = true)
  */
 function getValidDBInsertDateValue($value)
 {
-	$log = LoggerManager::getInstance();
-	$log->debug("Entering getValidDBInsertDateValue(" . $value . ") method ...");
+
+	\App\Log::trace("Entering getValidDBInsertDateValue(" . $value . ") method ...");
 	$value = trim($value);
 	$delim = array('/', '.');
 	foreach ($delim as $delimiter) {
@@ -1442,7 +626,7 @@ function getValidDBInsertDateValue($value)
 		return '';
 	}
 
-	$log->debug("Exiting getValidDBInsertDateValue method ...");
+	\App\Log::trace("Exiting getValidDBInsertDateValue method ...");
 	return $insert_date;
 }
 
@@ -1471,23 +655,6 @@ function getValidDBInsertDateTimeValue($value)
 	}
 }
 
-/** Function to get the tab meta information for a given id
- * @param $tabId -- tab id :: Type integer
- * @returns $tabInfo -- array of preference name to preference value :: Type array
- */
-function getTabInfo($tabId)
-{
-	$adb = PearDatabase::getInstance();
-
-	$tabInfoResult = $adb->pquery('SELECT prefname, prefvalue FROM vtiger_tab_info WHERE tabid=?', array($tabId));
-	$tabInfo = [];
-	for ($i = 0; $i < $adb->num_rows($tabInfoResult); ++$i) {
-		$prefName = $adb->query_result($tabInfoResult, $i, 'prefname');
-		$prefValue = $adb->query_result($tabInfoResult, $i, 'prefvalue');
-		$tabInfo[$prefName] = $prefValue;
-	}
-}
-
 /** Function to return block name
  * @param Integer -- $blockid
  * @return String - Block Name
@@ -1510,33 +677,6 @@ function getBlockName($blockid)
 	return $blockname;
 }
 
-function validateAlphaNumericInput($string)
-{
-	preg_match('/^[\w _\-]+$/', $string, $matches);
-	if (count($matches) == 0) {
-		return false;
-	}
-	return true;
-}
-
-function validateServerName($string)
-{
-	preg_match('/^[\w\-\.\\/:]+$/', $string, $matches);
-	if (count($matches) == 0) {
-		return false;
-	}
-	return true;
-}
-
-function validateEmailId($string)
-{
-	preg_match('/^[a-zA-Z0-9]+([\_\-\.]*[a-zA-Z0-9]+[\_\-]?)*@[a-zA-Z0-9]+([\_\-]?[a-zA-Z0-9]+)*\.+([\-\_]?[a-zA-Z0-9])+(\.?[a-zA-Z0-9]+)*$/', $string, $matches);
-	if (count($matches) == 0) {
-		return false;
-	}
-	return true;
-}
-
 /**
  * Function to get the approximate difference between two date time values as string
  */
@@ -1554,29 +694,19 @@ function dateDiffAsString($d1, $d2)
 	$seconds = $dateDiff['seconds'];
 
 	if ($years > 0) {
-		$diffString = "$years " . getTranslatedString('LBL_YEARS', $currentModule);
+		$diffString = "$years " . \App\Language::translate('LBL_YEARS', $currentModule);
 	} elseif ($months > 0) {
-		$diffString = "$months " . getTranslatedString('LBL_MONTHS', $currentModule);
+		$diffString = "$months " . \App\Language::translate('LBL_MONTHS', $currentModule);
 	} elseif ($days > 0) {
-		$diffString = "$days " . getTranslatedString('LBL_DAYS', $currentModule);
+		$diffString = "$days " . \App\Language::translate('LBL_DAYS', $currentModule);
 	} elseif ($hours > 0) {
-		$diffString = "$hours " . getTranslatedString('LBL_HOURS', $currentModule);
+		$diffString = "$hours " . \App\Language::translate('LBL_HOURS', $currentModule);
 	} elseif ($minutes > 0) {
-		$diffString = "$minutes " . getTranslatedString('LBL_MINUTES', $currentModule);
+		$diffString = "$minutes " . \App\Language::translate('LBL_MINUTES', $currentModule);
 	} else {
-		$diffString = "$seconds " . getTranslatedString('LBL_SECONDS', $currentModule);
+		$diffString = "$seconds " . \App\Language::translate('LBL_SECONDS', $currentModule);
 	}
 	return $diffString;
-}
-
-function getMinimumCronFrequency()
-{
-	global $MINIMUM_CRON_FREQUENCY;
-
-	if (!empty($MINIMUM_CRON_FREQUENCY)) {
-		return $MINIMUM_CRON_FREQUENCY;
-	}
-	return 1;
 }
 
 //Function returns Email related Modules
@@ -1613,30 +743,6 @@ function getInventoryModules()
 	$inventoryModules = [];
 	return $inventoryModules;
 }
-/* Function to only initialize the update of Vtlib Compliant modules
- * @param - $module - Name of the module
- * @param - $packagepath - Complete path to the zip file of the Module
- */
-
-function initUpdateVtlibModule($module, $packagepath)
-{
-	$log = LoggerManager::getInstance();
-
-	$Vtiger_Utils_Log = true;
-	$package = new vtlib\Package();
-
-	if ($module == null) {
-		$log->fatal("Module name is invalid");
-	} else {
-		$moduleInstance = vtlib\Module::getInstance($module);
-		if ($moduleInstance) {
-			$log->debug("$module - Module instance found - Init Update starts here");
-			$package->initUpdate($moduleInstance, $packagepath, true);
-		} else {
-			$log->fatal("$module doesn't exists!");
-		}
-	}
-}
 
 /**
  * Function to get the list of Contacts related to an activity
@@ -1667,116 +773,6 @@ function getActivityRelatedContacts($activityId)
 	return $contactsList;
 }
 
-function isLeadConverted($leadId)
-{
-	$adb = PearDatabase::getInstance();
-
-	$query = 'SELECT converted FROM vtiger_leaddetails WHERE converted = 1 AND leadid=?';
-	$params = array($leadId);
-
-	$result = $adb->pquery($query, $params);
-
-	if ($result && $adb->num_rows($result) > 0) {
-		return true;
-	}
-	return false;
-}
-
-function getSelectedRecords($input, $module, $idstring, $excludedRecords)
-{
-	global $current_user, $adb;
-	if ($idstring == 'relatedListSelectAll') {
-		$recordid = vtlib_purify($input['recordid']);
-		$adb = PearDatabase::getInstance();
-		$sql = 'SELECT vtiger_crmentity.crmid as id FROM vtiger_crmentity
-		INNER JOIN vtiger_campaign_records ON vtiger_campaign_records.crmid = vtiger_crmentity.crmid
-		WHERE vtiger_crmentity.crmid = ? AND vtiger_crmentity.deleted=0';
-		$result = $adb->pquery($sql, array($recordid));
-		$storearray = [];
-		while (($id = $adb->getSingleValue($result)) !== false) {
-			$storearray[] = $id;
-		}
-		$excludedRecords = explode(';', $excludedRecords);
-		$storearray = array_diff($storearray, $excludedRecords);
-	} else if ($module == 'Documents') {
-
-		if ($input['selectallmode'] == 'true') {
-			$result = getSelectAllQuery($input, $module);
-			$storearray = [];
-			$focus = CRMEntity::getInstance($module);
-
-			for ($i = 0; $i < $adb->num_rows($result); $i++) {
-				$storearray[] = $adb->query_result($result, $i, $focus->table_index);
-			}
-
-			$excludedRecords = explode(';', $excludedRecords);
-			$storearray = array_diff($storearray, $excludedRecords);
-			if ($idstring != 'all') {
-				$storearray = array_merge($storearray, explode(';', $idstring));
-			}
-			$storearray = array_unique($storearray);
-		} else {
-			$storearray = explode(";", $idstring);
-		}
-	} elseif ($idstring == 'all') {
-
-		$result = getSelectAllQuery($input, $module);
-		$storearray = [];
-		$focus = CRMEntity::getInstance($module);
-
-		for ($i = 0; $i < $adb->num_rows($result); $i++) {
-			$storearray[] = $adb->query_result($result, $i, $focus->table_index);
-		}
-
-		$excludedRecords = explode(';', $excludedRecords);
-		$storearray = array_diff($storearray, $excludedRecords);
-	} else {
-		$storearray = explode(";", $idstring);
-	}
-
-	return $storearray;
-}
-
-function getSelectAllQuery($input, $module)
-{
-	global $adb;
-
-	$viewid = vtlib_purify($input['viewname']);
-
-	if ($module == "Calendar") {
-		$listquery = getListQuery($module);
-		$oCustomView = new CustomView($module);
-		$query = $oCustomView->getModifiedCvListQuery($viewid, $listquery, $module);
-		$where = '';
-		if ($input['query'] == 'true') {
-			list($where, $ustring) = explode("#@@#", getWhereCondition($module, $input));
-			if (isset($where) && $where != '') {
-				$query .= " AND " . $where;
-			}
-		}
-	} else {
-		$current_user = vglobal('current_user');
-		$queryGenerator = new QueryGenerator($module, $current_user);
-		$queryGenerator->initForCustomViewById($viewid);
-
-		if ($input['query'] == 'true') {
-			$queryGenerator->addUserSearchConditions($input);
-		}
-
-		$queryGenerator->setFields(array('id'));
-		$query = $queryGenerator->getQuery();
-
-		if ($module == 'Documents') {
-			$folderid = vtlib_purify($input['folderidstring']);
-			$folderid = str_replace(';', ',', $folderid);
-			$query .= " AND vtiger_notes.folderid in (" . $folderid . ")";
-		}
-	}
-
-	$result = $adb->pquery($query, []);
-	return $result;
-}
-
 /** Function to get the difference between 2 datetime strings or millisecond values */
 function dateDiff($d1, $d2)
 {
@@ -1799,73 +795,6 @@ function dateDiff($d1, $d2)
 		"seconds_total" => $diffSecs,
 		"seconds" => (int) date("s", $diff)
 	);
-}
-
-function getExportRecordIds($moduleName, $viewid, $input)
-{
-	global $adb, $list_max_entries_per_page;
-
-	$idstring = vtlib_purify($input['idstring']);
-	$export_data = vtlib_purify($input['export_data']);
-
-	if (in_array($moduleName, getInventoryModules()) && $export_data == 'currentpage') {
-		$queryGenerator = new QueryGenerator($moduleName, vglobal('current_user'));
-		$queryGenerator->initForCustomViewById($viewid);
-
-		if ($input['query'] == 'true') {
-			$queryGenerator->addUserSearchConditions($input);
-		}
-
-		$queryGenerator->setFields(array('id'));
-		$query = $queryGenerator->getQuery();
-		$current_page = ListViewSession::getCurrentPage($moduleName, $viewid);
-		$limit_start_rec = ($current_page - 1) * $list_max_entries_per_page;
-		if ($limit_start_rec < 0)
-			$limit_start_rec = 0;
-		$query .= sprintf(' LIMIT %s,%s', $limit_start_rec, $list_max_entries_per_page);
-
-		$result = $adb->pquery($query, []);
-		$idstring = [];
-		$focus = CRMEntity::getInstance($moduleName);
-		for ($i = 0; $i < $adb->num_rows($result); $i++) {
-			$idstring[] = $adb->query_result($result, $i, $focus->table_index);
-		}
-		$idstring = implode(';', $idstring);
-		$export_data = 'selecteddata';
-	}
-	return $idstring . '#@@#' . $export_data;
-}
-
-/**
- * Function to get combinations of string from Array
- * @param <Array> $array
- * @param <String> $tempString
- * @return <Array>
- */
-function getCombinations($array, $tempString = '')
-{
-	for ($i = 0; $i < count($array); $i++) {
-		$splicedArray = $array;
-		$element = array_splice($splicedArray, $i, 1); // removes and returns the i'th element
-		if (count($splicedArray) > 0) {
-			if (!is_array($result)) {
-				$result = [];
-			}
-			$result = array_merge($result, getCombinations($splicedArray, $tempString . ' |##| ' . $element[0]));
-		} else {
-			return array($tempString . ' |##| ' . $element[0]);
-		}
-	}
-	return $result;
-}
-
-function getCompanyDetails()
-{
-	$db = PearDatabase::getInstance();
-	$result = $db->query('select * from vtiger_organizationdetails');
-
-	$companyDetails = $db->getRow($result);
-	return $companyDetails;
 }
 
 /** call back function to change the array values in to lower case */

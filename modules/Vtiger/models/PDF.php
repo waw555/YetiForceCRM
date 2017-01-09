@@ -6,6 +6,7 @@
  * @license licenses/License.html
  * @author Maciej Stencel <m.stencel@yetiforce.com>
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_PDF_Model extends Vtiger_Base_Model
 {
@@ -15,6 +16,15 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 	protected $recordCache = [];
 	protected $recordId;
 	protected $viewToPicklistValue = ['Detail' => 'PLL_DETAILVIEW', 'List' => 'PLL_LISTVIEW'];
+
+	/**
+	 * Function to get watermark type
+	 * @return array
+	 */
+	public function getWatermarkType()
+	{
+		return [Vtiger_mPDF_Pdf::WATERMARK_TYPE_TEXT => 'PLL_TEXT', Vtiger_mPDF_Pdf::WATERMARK_TYPE_IMAGE => 'PLL_IMAGE'];
+	}
 
 	/**
 	 * Function to get the id of the record
@@ -27,7 +37,7 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 
 	/**
 	 * Fuction to get the Name of the record
-	 * @return <String> - Entity Name of the record
+	 * @return string - Entity Name of the record
 	 */
 	public function getName()
 	{
@@ -125,7 +135,6 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 	{
 		$templates = $this->getTemplatesByModule($moduleName);
 		foreach ($templates as $id => &$template) {
-			$active = true;
 			if (!$template->isVisible($view) || !$template->checkUserPermissions()) {
 				unset($templates[$id]);
 			}
@@ -140,13 +149,12 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 	 */
 	public static function getTemplatesByModule($moduleName)
 	{
-		$db = PearDatabase::getInstance();
 
-		$query = sprintf('SELECT * FROM `%s` WHERE `module_name` = ? and `status` = ?;', self::$baseTable);
-		$result = $db->pquery($query, [$moduleName, 'active']);
+		$dataReader = (new \App\Db\Query())->from(self::$baseTable)
+				->where(['module_name' => $moduleName, 'status' => 1])
+				->createCommand()->query();
 		$templates = [];
-
-		while ($row = $db->fetchByAssoc($result)) {
+		while ($row = $dataReader->read()) {
 			$handlerClass = Vtiger_Loader::getComponentClassName('Model', 'PDF', $moduleName);
 			$pdf = new $handlerClass();
 			$pdf->setData($row);
@@ -161,27 +169,24 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 		if ($pdf) {
 			return $pdf;
 		}
-		$db = PearDatabase::getInstance();
-		$query = sprintf('SELECT * FROM `%s` WHERE `%s` = ? LIMIT 1', self::$baseTable, self::$baseIndex);
-		$result = $db->pquery($query, [$recordId]);
-		if ($result->rowCount() == 0) {
+		$row = (new \App\Db\Query())->from(self::$baseTable)->where([self::$baseIndex => $recordId])->one();
+		if ($row === false) {
 			return false;
 		}
-		$data = $db->fetchByAssoc($result);
-		if ($moduleName == 'Vtiger' && isset($data['module_name'])) {
-			$moduleName = $data['module_name'];
+		if ($moduleName == 'Vtiger' && isset($row['module_name'])) {
+			$moduleName = $row['module_name'];
 		}
 
 		$handlerClass = Vtiger_Loader::getComponentClassName('Model', 'PDF', $moduleName);
 		$pdf = new $handlerClass();
-		$pdf->setData($data);
+		$pdf->setData($row);
 		Vtiger_Cache::set('PDFModel', $recordId, $pdf);
 		return $pdf;
 	}
 
 	/**
 	 * Function returns valuetype of the field filter
-	 * @return <String>
+	 * @return string
 	 */
 	public function getFieldFilterValueType($fieldname)
 	{
@@ -220,8 +225,8 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 		if ($test !== false) {
 			return (bool) $test;
 		}
-		vimport("~/modules/com_vtiger_workflow/VTJsonCondition.inc");
-		vimport("~/modules/com_vtiger_workflow/VTEntityCache.inc");
+		vimport("~/modules/com_vtiger_workflow/VTJsonCondition.php");
+		vimport("~/modules/com_vtiger_workflow/VTEntityCache.php");
 		vimport("~/include/Webservices/Retrieve.php");
 
 		$conditionStrategy = new VTJsonCondition();
@@ -252,7 +257,7 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 		} elseif (in_array('Roles:' . $currentUser->getRole(), $permissions)) {
 			return true;
 		} elseif (array_key_exists('Groups', $getTypes)) {
-			$accessibleGroups = array_keys(\includes\fields\Owner::getInstance($this->get('module_name'), $currentUser)->getAccessibleGroupForModule());
+			$accessibleGroups = array_keys(\App\Fields\Owner::getInstance($this->get('module_name'), $currentUser)->getAccessibleGroupForModule());
 			$groups = array_intersect($getTypes['Groups'], $currentUser->getGroups());
 			if (array_intersect($groups, $accessibleGroups)) {
 				return true;
@@ -298,7 +303,7 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 			$parameters['subject'] = $this->get('meta_subject');
 			$parameters['keywords'] = $this->get('meta_keywords');
 		} else {
-			$companyDetails = getCompanyDetails();
+			$companyDetails = Vtiger_CompanyDetails_Model::getInstanceById()->getData();
 			$parameters['title'] = $this->get('primary_name');
 			$parameters['author'] = $companyDetails['organizationname'];
 			$parameters['creator'] = $companyDetails['organizationname'];
@@ -499,7 +504,7 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 		if (empty($content)) {
 			return $content;
 		}
-		$companyDetails = getCompanyDetails();
+		$companyDetails = Vtiger_CompanyDetails_Model::getInstanceById()->getData();
 
 		foreach ($companyDetails as $name => $value) {
 			if ($name === 'logoname') {
@@ -595,12 +600,11 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 	public static function attachToEmail($salt)
 	{
 		header('Location: index.php?module=OSSMail&view=compose&pdf_path=' . $salt);
-		exit;
 	}
 
 	public static function zipAndDownload(array $fileNames)
 	{
-		$log = vglobal('log');
+
 		//create the object
 		$zip = new ZipArchive();
 
@@ -612,8 +616,8 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 
 		//create the file and throw the error if unsuccessful
 		if ($zip->open($zipPath . $zipName, ZIPARCHIVE::CREATE) !== true) {
-			$log->error("cannot open <$zipPath.$zipName>\n");
-			exit(__CLASS__ . ':' . __METHOD__ . " | cannot open <$zipPath.$zipName>\n");
+			\App\Log::error("cannot open <$zipPath.$zipName>\n");
+			throw new \Exception\NoPermitted("cannot open <$zipPath.$zipName>");
 		}
 
 		//add each files of $file_name array to archive
@@ -626,7 +630,7 @@ class Vtiger_PDF_Model extends Vtiger_Base_Model
 		foreach ($fileNames as $file) {
 			unlink($file);
 		}
-		$mimeType = \includes\fields\File::getMimeContentType($fileName);
+		$mimeType = \App\Fields\File::getMimeContentType($fileName);
 		$size = filesize($fileName);
 		$name = basename($fileName);
 

@@ -263,6 +263,28 @@ var app = {
 		} else if (!params.placeholder) {
 			params.placeholder = app.vtranslate('JS_SELECT_AN_OPTION');
 		}
+		params.templateResult = function (data, container) {
+			if (data.element && data.element.className) {
+				$(container).addClass(data.element.className);
+			}
+			if (typeof data.name == 'undefined') {
+				return data.text;
+			}
+			if (data.type == 'optgroup') {
+				return '<strong>' + data.name + '</strong>';
+			} else {
+				return '<span>' + data.name + '</span>';
+			}
+		};
+		params.templateSelection = function (data, container) {
+			if (data.element && data.element.className) {
+				$(container).addClass(data.element.className);
+			}
+			if (data.text === '') {
+				return data.name;
+			}
+			return data.text;
+		};
 		if (selectElement.data('ajaxSearch') === 1) {
 			params.tags = false;
 			params.language.searching = function () {
@@ -369,6 +391,12 @@ var app = {
 		}
 		selectElement.selectize(params);
 		return selectElement;
+	},
+	hidePopover: function (element) {
+		if (typeof element == 'undefined') {
+			element = jQuery('body .popoverTooltip');
+		}
+		element.popover('hide');
 	},
 	showPopoverElementView: function (selectElement, params) {
 		if (typeof params == 'undefined') {
@@ -514,7 +542,6 @@ var app = {
 			var modalContainer = container.find('.modal:first');
 			modalContainer.modal(params);
 			jQuery('body').append(container);
-			// TODO Make it better with jQuery.on
 			app.changeSelectElementView(modalContainer);
 			//register all select2 Elements
 			app.showSelect2ElementView(modalContainer.find('select.select2'));
@@ -547,6 +574,9 @@ var app = {
 			var modalContainers = jQuery('.modalContainer');
 			if (modalContainers.length == 0 && backdrop.length) {
 				backdrop.remove();
+			}
+			if(backdrop.length > 0) {
+				$('body').addClass('modal-open');
 			}
 		});
 		return container;
@@ -887,8 +917,14 @@ var app = {
 			currentElement.val(date);
 		});
 	},
-	registerEventForClockPicker: function () {
-		var formatTime = app.getMainParams('userTimeFormat');
+	registerEventForClockPicker: function (object) {
+		if (typeof object === 'undefined') {
+			var elementClockBtn = $('.clockPicker');
+			var formatTime = app.getMainParams('userTimeFormat');
+		} else {
+			elementClockBtn = object;
+			var formatTime = elementClockBtn.data('format');
+		}
 		formatTime = formatTime == 12 ? true : false;
 		var params = {
 			placement: 'bottom',
@@ -897,7 +933,7 @@ var app = {
 			minutestep: 5,
 			ampmSubmit: false,
 		};
-		var elementClockBtn = $('.clockPicker')
+
 		var parentTimeElem = elementClockBtn.closest('.time');
 		jQuery('.input-group-addon', parentTimeElem).on('click', function (e) {
 			var elem = jQuery(e.currentTarget);
@@ -1558,6 +1594,12 @@ var app = {
 				btn.text(btn.data('on'));
 			}
 		});
+	},
+	getScreenHeight: function (percantage) {
+		if (typeof percantage == 'undefined') {
+			percantage = 100;
+		}
+		return jQuery(window).height() * percantage / 100;
 	}
 }
 jQuery(document).ready(function () {

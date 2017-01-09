@@ -12,7 +12,7 @@
 class Vtiger_ProcessDuplicates_Action extends Vtiger_Action_Controller
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$module = $request->getModule();
 		$records = $request->get('records');
@@ -26,7 +26,7 @@ class Vtiger_ProcessDuplicates_Action extends Vtiger_Action_Controller
 		}
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
@@ -41,7 +41,6 @@ class Vtiger_ProcessDuplicates_Action extends Vtiger_Action_Controller
 				$primaryRecordModel->set($field->getName(), $fieldValue);
 			}
 		}
-		$primaryRecordModel->set('mode', 'edit');
 		$primaryRecordModel->save();
 
 		$deleteRecords = array_diff($records, array($primaryRecord));

@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * **************************************************************************** */
 namespace vtlib;
 
@@ -17,106 +18,94 @@ class Block
 {
 
 	/** ID of this block instance */
-	var $id;
+	public $id;
 
 	/** Label for this block instance */
-	var $label;
-	var $sequence;
-	var $showtitle = 0;
-	var $visible = 0;
-	var $increateview = 0;
-	var $ineditview = 0;
-	var $indetailview = 0;
-	var $display_status = 1;
-	var $iscustom = 0;
-	var $module;
+	public $label;
+	public $sequence;
+	public $showtitle = 0;
+	public $visible = 0;
+	public $increateview = 0;
+	public $ineditview = 0;
+	public $indetailview = 0;
+	public $display_status = 1;
+	public $iscustom = 0;
+	public $module;
 
 	/**
-	 * Get unquie id for this instance
-	 * @access private
+	 * Basic table name
+	 * @var string 
 	 */
-	function __getUniqueId()
-	{
-		$adb = \PearDatabase::getInstance();
-
-		/** Sequence table was added from 5.1.0 */
-		$maxblockid = $adb->getUniqueID('vtiger_blocks');
-		return $maxblockid;
-	}
+	public static $baseTable = 'vtiger_blocks';
 
 	/**
 	 * Get next sequence value to use for this block instance
-	 * @access private
+	 * @return int
 	 */
-	function __getNextSequence()
+	public function __getNextSequence()
 	{
-		$db = \PearDatabase::getInstance();
-		$result = $db->pquery('SELECT MAX(sequence) as max_sequence from vtiger_blocks where tabid = ?', [$this->module->id]);
-		$maxseq = 0;
-		if ($db->num_rows($result)) {
-			$maxseq = $db->getSingleValue($result);
-		}
-		return ++$maxseq;
+		return (new \App\Db\Query())->from(self::$baseTable)->where(['tabid' => $this->module->id])->max('sequence') + 1;
 	}
 
 	/**
 	 * Initialize this block instance
-	 * @param Array Map of column name and value
-	 * @param Module Instance of module to which this block is associated
-	 * @access private
+	 * @param array Map of column name and value
+	 * @param \Module Module Instance of module to which this block is associated
 	 */
-	function initialize($valuemap, $moduleInstance = false)
+	public function initialize($valuemap, $moduleInstance = false)
 	{
-		$this->id = $valuemap['blockid'];
-		$this->label = $valuemap['blocklabel'];
-		$this->display_status = $valuemap['display_status'];
-		$this->sequence = $valuemap['sequence'];
-		$this->iscustom = $valuemap['iscustom'];
-		$this->module = $moduleInstance ? $moduleInstance : Module::getInstance($valuemap['tabid']);
+		$this->id = isset($valuemap['blockid']) ? $valuemap['blockid'] : null;
+		$this->label = isset($valuemap['blocklabel']) ? $valuemap['blocklabel'] : null;
+		$this->display_status = isset($valuemap['display_status']) ? $valuemap['display_status'] : null;
+		$this->sequence = isset($valuemap['sequence']) ? $valuemap['sequence'] : null;
+		$this->iscustom = isset($valuemap['iscustom']) ? $valuemap['iscustom'] : null;
+		$tabid = isset($valuemap['tabid']) ? $valuemap['tabid'] : null;
+		$this->module = $moduleInstance ? $moduleInstance : Module::getInstance($tabid);
 	}
 
 	/**
 	 * Create vtiger CRM block
-	 * @access private
+	 * @param \Module $moduleInstance
 	 */
-	function __create($moduleInstance)
+	public function __create($moduleInstance)
 	{
-		$adb = \PearDatabase::getInstance();
-
+		$db = \App\Db::getInstance();
 		$this->module = $moduleInstance;
 
-		$this->id = $this->__getUniqueId();
 		if (!$this->sequence)
 			$this->sequence = $this->__getNextSequence();
 		if ($this->display_status != 0) {
 			$this->display_status = 1;
 		}
-		$adb->pquery("INSERT INTO vtiger_blocks(blockid,tabid,blocklabel,sequence,show_title,visible,create_view,edit_view,detail_view,display_status,iscustom)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?)", Array($this->id, $this->module->id, $this->label, $this->sequence,
-			$this->showtitle, $this->visible, $this->increateview, $this->ineditview, $this->indetailview, $this->display_status, $this->iscustom));
+		$db->createCommand()->insert(self::$baseTable, [
+			'tabid' => $this->module->id,
+			'blocklabel' => $this->label,
+			'sequence' => $this->sequence,
+			'show_title' => $this->showtitle,
+			'visible' => $this->visible,
+			'create_view' => $this->increateview,
+			'edit_view' => $this->ineditview,
+			'detail_view' => $this->indetailview,
+			'display_status' => $this->display_status,
+			'iscustom' => $this->iscustom
+		])->execute();
+		$this->id = $db->getLastInsertID(self::$baseTable . '_blockid_seq');
 		self::log("Creating Block $this->label ... DONE");
 		self::log("Module language entry for $this->label ... CHECK");
 	}
 
-	/**
-	 * Update vtiger CRM block
-	 * @access private
-	 * @internal TODO
-	 */
-	function __update()
+	public function __update()
 	{
 		self::log("Updating Block $this->label ... DONE");
 	}
 
 	/**
 	 * Delete this instance
-	 * @access private
 	 */
-	function __delete()
+	public function __delete()
 	{
-		$adb = \PearDatabase::getInstance();
 		self::log("Deleting Block $this->label ... ", false);
-		$adb->pquery("DELETE FROM vtiger_blocks WHERE blockid=?", Array($this->id));
+		\App\Db::getInstance()->createCommand()->delete(self::$baseTable, ['blockid' => $this->id])->execute();
 		self::log("DONE");
 	}
 
@@ -124,7 +113,7 @@ class Block
 	 * Save this block instance
 	 * @param Module Instance of the module to which this block is associated
 	 */
-	function save($moduleInstance = false)
+	public function save($moduleInstance = false)
 	{
 		if ($this->id)
 			$this->__update();
@@ -137,7 +126,7 @@ class Block
 	 * Delete block instance
 	 * @param Boolean True to delete associated fields, False to avoid it
 	 */
-	function delete($recursive = true)
+	public function delete($recursive = true)
 	{
 		if ($recursive) {
 			$fields = Field::getAllForBlock($this);
@@ -152,7 +141,7 @@ class Block
 	 * @param Field Instance of field to add to this block.
 	 * @return Reference to this block instance
 	 */
-	function addField($fieldInstance)
+	public function addField($fieldInstance)
 	{
 		$fieldInstance->save($this);
 		return $this;
@@ -164,59 +153,58 @@ class Block
 	 * @param Boolean true appends linebreak, false to avoid it
 	 * @access private
 	 */
-	static function log($message, $delim = true)
+	public static function log($message, $delim = true)
 	{
 		Utils::Log($message, $delim);
 	}
 
 	/**
 	 * Get instance of block
-	 * @param mixed block id or block label
-	 * @param Module Instance of the module if block label is passed
+	 * @param int|string block id or block label
+	 * @param \Module Module Instance of the module if block label is passed
+	 * @return \self
 	 */
-	static function getInstance($value, $moduleInstance = false)
+	public static function getInstance($value, $moduleInstance = false)
 	{
-		$adb = \PearDatabase::getInstance();
-		$cache = \Vtiger_Cache::getInstance();
-		if ($moduleInstance && $cache->getBlockInstance($value, $moduleInstance->id)) {
-			return $cache->getBlockInstance($value, $moduleInstance->id);
+		if (\App\Cache::has('BlockInstance', $value)) {
+			$data = \App\Cache::get('BlockInstance', $value);
 		} else {
-			$instance = false;
-			$query = false;
-			$queryParams = false;
+			$query = (new \App\Db\Query())->from(self::$baseTable);
 			if (Utils::isNumber($value)) {
-				$query = "SELECT * FROM vtiger_blocks WHERE blockid=?";
-				$queryParams = Array($value);
+				$query->where(['blockid' => $value]);
 			} else {
-				$query = "SELECT * FROM vtiger_blocks WHERE blocklabel=? AND tabid=?";
-				$queryParams = Array($value, $moduleInstance->id);
+				$query->where(['blocklabel' => $value, 'tabid' => $moduleInstance->id]);
 			}
-			$result = $adb->pquery($query, $queryParams);
-			if ($adb->num_rows($result)) {
-				$instance = new self();
-				$instance->initialize($adb->fetch_array($result), $moduleInstance);
-				$cache->setBlockInstance($value, $instance->module->id, $instance);
-			}
-			return $instance;
+			$data = $query->one();
+			\App\Cache::save('BlockInstance', $value, $data);
 		}
+		$instance = false;
+		if ($data) {
+			$instance = new self();
+			$instance->initialize($data, $moduleInstance);
+		}
+		return $instance;
 	}
 
 	/**
 	 * Get all block instances associated with the module
-	 * @param Module Instance of the module
+	 * @param \Module Module Instance of the module
 	 */
-	static function getAllForModule($moduleInstance)
+	public static function getAllForModule($moduleInstance)
 	{
-		$adb = \PearDatabase::getInstance();
+		if (\App\Cache::has('BlocksForModule', $moduleInstance->id)) {
+			$blocks = \App\Cache::get('BlocksForModule', $moduleInstance->id);
+		} else {
+			$blocks = (new \App\Db\Query())->from(self::$baseTable)
+				->where(['tabid' => $moduleInstance->id])
+				->orderBy(['sequence' => SORT_ASC])
+				->all();
+			\App\Cache::save('BlocksForModule', $moduleInstance->id, $blocks);
+		}
 		$instances = false;
-
-		$query = "SELECT * FROM vtiger_blocks WHERE tabid=? ORDER BY sequence";
-		$queryParams = Array($moduleInstance->id);
-
-		$result = $adb->pquery($query, $queryParams);
-		for ($index = 0; $index < $adb->num_rows($result); ++$index) {
+		foreach ($blocks as $row) {
 			$instance = new self();
-			$instance->initialize($adb->fetch_array($result), $moduleInstance);
+			$instance->initialize($row, $moduleInstance);
 			$instances[] = $instance;
 		}
 		return $instances;
@@ -224,22 +212,20 @@ class Block
 
 	/**
 	 * Delete all blocks associated with module
-	 * @param Module Instnace of module to use
-	 * @param Boolean true to delete associated fields, false otherwise
-	 * @access private
+	 * @param \Module Module Instnace of module to use
+	 * @param boolean true to delete associated fields, false otherwise
 	 */
-	static function deleteForModule($moduleInstance, $recursive = true)
+	public static function deleteForModule($moduleInstance, $recursive = true)
 	{
-		$adb = \PearDatabase::getInstance();
-		if ($recursive)
+		$db = \App\Db::getInstance();
+		if ($recursive) {
 			Field::deleteForModule($moduleInstance);
-		$adb->delete('vtiger_module_dashboard_blocks', 'tabid = ?', [$moduleInstance->getId()]);
-		$adb->pquery('DELETE vtiger_blocks, vtiger_blocks_hide'
-			. ' FROM vtiger_blocks'
-			. ' INNER JOIN `vtiger_blocks_hide`'
-			. ' ON vtiger_blocks.`blockid` = vtiger_blocks_hide.`blockid`'
-			. '  WHERE vtiger_blocks.`tabid` =?', [$moduleInstance->getId()]);
-		$adb->delete('vtiger_blocks', 'tabid=?', [$moduleInstance->getId()]);
+		}
+		$tabId = $moduleInstance->getId();
+		$db->createCommand()->delete('vtiger_module_dashboard_blocks', ['tabid' => $tabId])->execute();
+		$query = (new \App\Db\Query())->select(['blockid'])->from(self::$baseTable)->where(['tabid' => $tabId]);
+		$db->createCommand()->delete('vtiger_blocks_hide', ['blockid' => $query])->execute();
+		$db->createCommand()->delete(self::$baseTable, ['tabid' => $tabId])->execute();
 		self::log("Deleting blocks for module ... DONE");
 	}
 }

@@ -14,13 +14,12 @@ include_once 'include/utils/VtlibUtils.php';
 include_once 'include/Webservices/Create.php';
 include_once 'modules/Webforms/model/WebformsModel.php';
 include_once 'modules/Webforms/model/WebformsFieldModel.php';
-include_once 'include/QueryGenerator/QueryGenerator.php';
 include_once 'include/main/WebUI.php';
 
 class Webform_Capture
 {
 
-	function captureNow(Vtiger_Request $request)
+	public function captureNow(Vtiger_Request $request)
 	{
 		$currentLanguage = Vtiger_Language_Handler::getLanguage();
 		$moduleLanguageStrings = Vtiger_Language_Handler::getModuleStringsFromFile($currentLanguage);
@@ -28,7 +27,7 @@ class Webform_Capture
 
 		$returnURL = false;
 		try {
-			if (!\includes\Modules::isModuleActive('Webforms'))
+			if (!\App\Module::isModuleActive('Webforms'))
 				throw new Exception('webforms is not active');
 
 			$webform = Webforms_Model::retrieveWithPublicId($request->get('publicid'));
@@ -92,9 +91,9 @@ class Webform_Capture
 	{
 		if (empty($url)) {
 			if ($success)
-				$response = \includes\utils\Json::encode(array('success' => true, 'result' => $success));
+				$response = \App\Json::encode(array('success' => true, 'result' => $success));
 			else
-				$response = \includes\utils\Json::encode(array('success' => false, 'error' => array('message' => $failure)));
+				$response = \App\Json::encode(array('success' => false, 'error' => array('message' => $failure)));
 
 			// Support JSONP
 			if (!AppRequest::isEmpty('callback')) {

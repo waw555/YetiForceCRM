@@ -21,7 +21,7 @@ class Vtiger_Request
 	/**
 	 * Default constructor
 	 */
-	function __construct($values, $rawvalues = [], $stripifgpc = true)
+	public function __construct($values, $rawvalues = [], $stripifgpc = true)
 	{
 		$this->rawValueMap = $values;
 		if ($stripifgpc && !empty($this->rawValueMap) && get_magic_quotes_gpc()) {
@@ -32,7 +32,7 @@ class Vtiger_Request
 	/**
 	 * Strip the slashes recursively on the values.
 	 */
-	function stripslashes_recursive($value)
+	public function stripslashes_recursive($value)
 	{
 		$value = is_array($value) ? array_map(array($this, 'stripslashes_recursive'), $value) : stripslashes($value);
 		return $value;
@@ -41,7 +41,7 @@ class Vtiger_Request
 	/**
 	 * Get key value (otherwise default value)
 	 */
-	function get($key, $defvalue = '')
+	public function get($key, $defvalue = '')
 	{
 		$value = $defvalue;
 		if (isset($this->valueMap[$key])) {
@@ -63,15 +63,15 @@ class Vtiger_Request
 			}
 		}
 		if ($isJSON) {
-			$decodeValue = \includes\utils\Json::decode($value);
+			$decodeValue = \App\Json::decode($value);
 			if (isset($decodeValue)) {
 				$value = $decodeValue;
 			}
 		}
 
-		//Handled for null because vtlib_purify returns empty string
+		//Handled for null because App\Purifier::purify returns empty string
 		if (!empty($value)) {
-			$value = vtlib_purify($value);
+			$value = App\Purifier::purify($value);
 		}
 		$this->valueMap[$key] = $value;
 		return $value;
@@ -80,23 +80,23 @@ class Vtiger_Request
 	/**
 	 * Get value for key as boolean
 	 */
-	function getBoolean($key, $defvalue = '')
+	public function getBoolean($key, $defvalue = '')
 	{
 		return strcasecmp('true', $this->get($key, $defvalue) . '') === 0;
 	}
 
 	/**
 	 * Function to get the value if its safe to use for SQL Query (column).
-	 * @param <String> $key
-	 * @param <Boolean> $skipEmpty - Skip the check if string is empty
+	 * @param string $key
+	 * @param boolean $skipEmpty - Skip the check if string is empty
 	 * @return Value for the given key
 	 */
 	public function getForSql($key, $skipEmtpy = true)
 	{
-		return Vtiger_Util_Helper::validateStringForSql($this->get($key), $skipEmtpy);
+		return \App\Purifier::purifySql($this->get($key), $skipEmtpy);
 	}
 
-	function getForHtml($key, $defvalue = '')
+	public function getForHtml($key, $defvalue = '')
 	{
 		$value = $defvalue;
 		if (isset($this->rawValueMap[$key])) {
@@ -115,15 +115,15 @@ class Vtiger_Request
 			}
 		}
 		if ($isJSON) {
-			$decodeValue = \includes\utils\Json::decode($value);
+			$decodeValue = \App\Json::decode($value);
 			if (isset($decodeValue)) {
 				$value = $decodeValue;
 			}
 		}
 
-		//Handled for null because vtlib_purifyForHtml returns empty string
+		//Handled for null because \App\Purifier::purifyHtml returns empty string
 		if (!empty($value)) {
-			$value = vtlib_purifyForHtml($value);
+			$value = \App\Purifier::purifyHtml($value);
 		}
 		return $value;
 	}
@@ -131,7 +131,7 @@ class Vtiger_Request
 	/**
 	 * Get data map
 	 */
-	function getAllRaw()
+	public function getAllRaw()
 	{
 		return $this->rawValueMap;
 	}
@@ -139,7 +139,7 @@ class Vtiger_Request
 	/**
 	 * Get data map
 	 */
-	function getAll()
+	public function getAll()
 	{
 		foreach ($this->rawValueMap as $key => $value) {
 			$this->get($key);
@@ -150,15 +150,15 @@ class Vtiger_Request
 	/**
 	 * Check for existence of key
 	 */
-	function has($key)
+	public function has($key)
 	{
-		return isset($this->rawValueMap[$key]);
+		return isset($this->rawValueMap[$key]) || isset($this->valueMap[$key]);
 	}
 
 	/**
 	 * Is the value (linked to key) empty?
 	 */
-	function isEmpty($key)
+	public function isEmpty($key)
 	{
 		if (isset($this->rawValueMap[$key])) {
 			return empty($this->rawValueMap[$key]);
@@ -169,7 +169,7 @@ class Vtiger_Request
 	/**
 	 * Get the raw value (if present) ignoring primary value.
 	 */
-	function getRaw($key, $defvalue = '')
+	public function getRaw($key, $defvalue = '')
 	{
 		if (isset($this->rawValueMap[$key])) {
 			return $this->rawValueMap[$key];
@@ -180,15 +180,24 @@ class Vtiger_Request
 	/**
 	 * Set the value for key
 	 */
-	function set($key, $newvalue)
+	public function set($key, $newvalue)
 	{
 		$this->valueMap[$key] = $newvalue;
 	}
 
 	/**
+	 * Set the value for key
+	 */
+	public function delete($key)
+	{
+		unset($this->valueMap[$key]);
+		unset($this->rawValueMap[$key]);
+	}
+
+	/**
 	 * Set the value for key, both in the object as well as global $_REQUEST variable
 	 */
-	function setGlobal($key, $newvalue)
+	public function setGlobal($key, $newvalue)
 	{
 		$this->set($key, $newvalue);
 	}
@@ -196,7 +205,7 @@ class Vtiger_Request
 	/**
 	 * Set default value for key
 	 */
-	function setDefault($key, $defvalue)
+	public function setDefault($key, $defvalue)
 	{
 		$this->defaultmap[$key] = $defvalue;
 	}
@@ -204,7 +213,7 @@ class Vtiger_Request
 	/**
 	 * Shorthand function to get value for (key=_operation|operation)
 	 */
-	function getOperation()
+	public function getOperation()
 	{
 		return $this->get('_operation', $this->get('operation'));
 	}
@@ -212,7 +221,7 @@ class Vtiger_Request
 	/**
 	 * Shorthand function to get value for (key=_session)
 	 */
-	function getSession()
+	public function getSession()
 	{
 		return $this->get('_session', $this->get('session'));
 	}
@@ -220,12 +229,12 @@ class Vtiger_Request
 	/**
 	 * Shorthand function to get value for (key=mode)
 	 */
-	function getMode()
+	public function getMode()
 	{
 		return $this->get('mode');
 	}
 
-	function getHeaders()
+	public function getHeaders()
 	{
 		if (!empty($this->headers)) {
 			return $this->headers;
@@ -248,7 +257,7 @@ class Vtiger_Request
 		return $headers;
 	}
 
-	function getHeader($key)
+	public function getHeader($key)
 	{
 		if (empty($this->headers)) {
 			$this->getHeaders();
@@ -256,7 +265,7 @@ class Vtiger_Request
 		return isset($this->headers[$key]) ? $this->headers[$key] : null;
 	}
 
-	function getRequestMetod()
+	public function getRequestMetod()
 	{
 		$method = $_SERVER['REQUEST_METHOD'];
 		if ($method == 'POST' && array_key_exists('HTTP_X_HTTP_METHOD', $_SERVER)) {
@@ -271,7 +280,7 @@ class Vtiger_Request
 		return $method;
 	}
 
-	function getModule($raw = true)
+	public function getModule($raw = true)
 	{
 		$moduleName = $this->get('module');
 		if (!$raw) {
@@ -283,9 +292,9 @@ class Vtiger_Request
 		return $moduleName;
 	}
 
-	function isAjax()
+	public function isAjax()
 	{
-		if (!empty($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] == true) {
+		if (!empty($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] === true) {
 			return true;
 		} elseif (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
 			return true;
@@ -296,14 +305,13 @@ class Vtiger_Request
 	/**
 	 * Validating incoming request.
 	 */
-	function validateReadAccess()
+	public function validateReadAccess()
 	{
 		$this->validateReferer();
-		// TODO validateIP restriction?
 		return true;
 	}
 
-	function validateWriteAccess($skipRequestTypeCheck = false)
+	public function validateWriteAccess($skipRequestTypeCheck = false)
 	{
 		if (!$skipRequestTypeCheck) {
 			if ($_SERVER['REQUEST_METHOD'] != 'POST')
@@ -328,7 +336,7 @@ class Vtiger_Request
 
 	protected function validateCSRF()
 	{
-		if (!csrf_check(false)) {
+		if (!CSRF::check(false)) {
 			throw new \Exception\Csrf('Unsupported request');
 		}
 	}
@@ -341,49 +349,59 @@ class AppRequest
 
 	public static function init()
 	{
-		if (!self::$request) {
-			self::$request = new Vtiger_Request($_REQUEST, $_REQUEST);
+		if (!static::$request) {
+			static::$request = new Vtiger_Request($_REQUEST, $_REQUEST);
 		}
-		return self::$request;
+		return static::$request;
 	}
 
 	public static function get($key, $defvalue = '')
 	{
-		if (!self::$request) {
-			self::init();
+		if (!static::$request) {
+			static::init();
 		}
-		return self::$request->get($key, $defvalue);
+		return static::$request->get($key, $defvalue);
 	}
 
 	public static function has($key)
 	{
-		if (!self::$request) {
-			self::init();
+		if (!static::$request) {
+			static::init();
 		}
-		return self::$request->has($key);
+		return static::$request->has($key);
 	}
 
 	public static function getForSql($key, $skipEmtpy = true)
 	{
-		if (!self::$request) {
-			self::init();
+		if (!static::$request) {
+			static::init();
 		}
-		return self::$request->getForSql($key, $skipEmtpy);
+		return static::$request->getForSql($key, $skipEmtpy);
 	}
 
 	public static function set($key, $value)
 	{
-		if (!self::$request) {
-			self::init();
+		if (!static::$request) {
+			static::init();
 		}
-		return self::$request->set($key, $value);
+		return static::$request->set($key, $value);
 	}
 
 	public static function isEmpty($key)
 	{
-		if (!self::$request) {
-			self::init();
+		if (!static::$request) {
+			static::init();
 		}
-		return self::$request->isEmpty($key);
+		return static::$request->isEmpty($key);
+	}
+
+	public static function isAjax()
+	{
+		if (!empty($_SERVER['HTTP_X_PJAX']) && $_SERVER['HTTP_X_PJAX'] === true) {
+			return true;
+		} elseif (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+			return true;
+		}
+		return false;
 	}
 }

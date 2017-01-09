@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * *********************************************************************************** */
 
 class PBXManager_Record_Model extends Vtiger_Record_Model
@@ -15,7 +16,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 	const lookuptableName = 'vtiger_pbxmanager_phonelookup';
 	const entitytableName = 'vtiger_crmentity';
 
-	static function getCleanInstance($moduleName)
+	public static function getCleanInstance($moduleName)
 	{
 		return new self;
 	}
@@ -27,7 +28,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 	public function searchIncomingCall()
 	{
 		$db = PearDatabase::getInstance();
-		$query = sprintf('SELECT * FROM %s AS module_table INNER JOIN %s AS entity_table  WHERE module_table.callstatus IN(?,?) AND module_table.direction=? AND module_table.pbxmanagerid=entity_table.crmid AND entity_table.deleted=0', self::moduletableName, self::entitytableName);
+		$query = sprintf('SELECT * FROM %s AS module_table INNER JOIN %s AS entity_table  WHERE module_table.callstatus IN(?,?) && module_table.direction=? && module_table.pbxmanagerid=entity_table.crmid && entity_table.deleted=0', self::moduletableName, self::entitytableName);
 		$result = $db->pquery($query, ['ringing', 'in-progress', 'inbound']);
 		$recordModels = [];
 		$rowCount = $db->num_rows($result);
@@ -62,20 +63,19 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 	public function updateCallStatus($recordIds)
 	{
 		$db = PearDatabase::getInstance();
-		$where = sprintf("pbxmanagerid IN (%s) AND callstatus='ringing'", generateQuestionMarks($recordIds));
+		$where = sprintf("pbxmanagerid IN (%s) && callstatus='ringing'", generateQuestionMarks($recordIds));
 		$db->update(self::moduletableName, ['callstatus' => 'no-response'], $where, $recordIds);
 	}
 
 	/**
 	 * Function to save PBXManager record with array of params
-	 * @param <array> $values
-	 * return <string> $recordid
+	 * @param array $values
+	 * return string $recordid
 	 */
 	public function saveRecordWithArrray($params)
 	{
 		$moduleModel = Vtiger_Module_Model::getInstance('PBXManager');
 		$recordModel = Vtiger_Record_Model::getCleanInstance('PBXManager');
-		$recordModel->set('mode', '');
 		$details = array_change_key_case($params, CASE_LOWER);
 		$fieldModelList = $moduleModel->getFields();
 		if (!isset($details["assigned_user_id"]))
@@ -92,7 +92,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 	/**
 	 * Function to update call details
 	 * @param <array> $details
-	 * $param <string> $callid
+	 * $param string $callid
 	 * return true
 	 */
 	public function updateCallDetails($details)
@@ -154,27 +154,36 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to save/update contact/account/lead record in Phonelookup table on every save
-	 * @param <array> $details
+	 * @param string $fieldName
+	 * @param array $details
+	 * @param boolean $new
+	 * @return int
 	 */
 	public function receivePhoneLookUpRecord($fieldName, $details, $new)
 	{
-		$recordid = $details['crmid'];
+		$db = \App\Db::getInstance();
 		$fnumber = preg_replace('/[-()\s+]/', '', $details[$fieldName]);
-		$rnumber = strrev($fnumber);
-		$db = PearDatabase::getInstance();
-
-		$params = array($recordid, $details['setype'], $fnumber, $rnumber, $fieldName);
-		$db->pquery('INSERT INTO ' . self::lookuptableName .
-			'(crmid, setype, fnumber, rnumber, fieldname) 
-                    VALUES(?,?,?,?,?) 
-                    ON DUPLICATE KEY 
-                    UPDATE fnumber=VALUES(fnumber), rnumber=VALUES(rnumber)', $params);
-		return true;
+		$isExists = (new \App\Db\Query())
+			->from(self::lookuptableName)
+			->where(['crmid' => $details['crmid'], 'setype' => $details['setype'], 'fieldname' => $fieldName])
+			->exists();
+		if ($isExists) {
+			return $db->createCommand()->update(self::lookuptableName, ['fnumber' => $fnumber, 'rnumber' => strrev($fnumber)], ['crmid' => $details['crmid'], 'setype' => $details['setype'], 'fieldname' => $fieldName])->execute();
+		} else {
+			return $db->createCommand()
+					->insert(self::lookuptableName, [
+						'crmid' => $details['crmid'],
+						'setype' => $details['setype'],
+						'fnumber' => $fnumber,
+						'rnumber' => strrev($fnumber),
+						'fieldname' => $fieldName
+					])->execute();
+		}
 	}
 
 	/**
 	 * Function to delete contact/account/lead record in Phonelookup table on every delete
-	 * @param <string> $recordid
+	 * @param string $recordid
 	 */
 	public function deletePhoneLookUpRecord($recordid)
 	{
@@ -184,24 +193,24 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * * Function to check the customer with number in phonelookup table
-	 * @param <string> $from
+	 * @param string $from
 	 */
 	public static function lookUpRelatedWithNumber($from)
 	{
 		$db = PearDatabase::getInstance();
 		$fnumber = preg_replace('/[-()\s+]/', '', $from);
 		$rnumber = strrev($fnumber);
-		$query = sprintf('SELECT crmid, fieldname FROM %s WHERE fnumber LIKE "%s" OR rnumber LIKE "%s" ', self::lookuptableName, "$fnumber%", "$rnumber%");
+		$query = sprintf('SELECT crmid, fieldname FROM %s WHERE fnumber LIKE "%s" || rnumber LIKE "%s" ', self::lookuptableName, "$fnumber%", "$rnumber%");
 		$result = $db->query($query);
 		if ($db->num_rows($result)) {
 			$row = $db->getRow($result);
 			$crmid = $row['crmid'];
 			$fieldname = $row['fieldname'];
-			$contact = $db->pquery('SELECT setype FROM vtiger_crmentity WHERE crmid = ? AND deleted=0', [$crmid]);
+			$contact = $db->pquery('SELECT setype FROM vtiger_crmentity WHERE crmid = ? && deleted=0', [$crmid]);
 			if ($db->num_rows($contact)) {
 				$rowCrm = $db->getRow($contact);
 				$data['id'] = $crmid;
-				$data['name'] = \includes\Record::getLabel($crmid);
+				$data['name'] = \App\Record::getLabel($crmid);
 				$data['setype'] = $rowCrm['setype'];
 				$data['fieldname'] = $fieldname;
 				return $data;
@@ -213,7 +222,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to user details with number
-	 * @param <string> $number
+	 * @param string $number
 	 */
 	public static function getUserInfoWithNumber($number)
 	{
@@ -255,7 +264,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 			}
 		}
 
-		$entityfields = getEntityField($module);
+		$entityfields = \vtlib\Functions::getEntityModuleSQLColumnString($module);
 		$querycolumnnames = implode(',', $lookupcolumns);
 		$entitycolumnnames = $entityfields['fieldname'];
 
@@ -263,7 +272,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 		$query .= " FROM vtiger_users";
 
 		if (!empty($lookupcolumns)) {
-			$query .=" WHERE deleted=0 AND ";
+			$query .= " WHERE deleted=0 && ";
 			$i = 0;
 			$columnCount = count($lookupcolumns);
 			foreach ($lookupcolumns as $columnname) {
@@ -271,7 +280,7 @@ class PBXManager_Record_Model extends Vtiger_Record_Model
 					if ($i == 0 || $i == ($columnCount))
 						$query .= sprintf("%s = '%s'", $columnname, $value);
 					else
-						$query .= sprintf(" OR %s = '%s'", $columnname, $value);
+						$query .= sprintf(" || %s = '%s'", $columnname, $value);
 					$i++;
 				}
 			}

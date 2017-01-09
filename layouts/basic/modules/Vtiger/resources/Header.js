@@ -88,7 +88,6 @@ jQuery.Class("Vtiger_Header_Js", {
 		var quickCreateSaveUrl = form.serializeFormData();
 		AppConnector.request(quickCreateSaveUrl).then(
 				function (data) {
-					//TODO: App Message should be shown
 					aDeferred.resolve(data);
 				},
 				function (textStatus, errorThrown) {
@@ -193,9 +192,10 @@ jQuery.Class("Vtiger_Header_Js", {
 			var quickCreateContent = quickCreateForm.find('.quickCreateContent');
 			var quickCreateContentHeight = quickCreateContent.height();
 			var contentHeight = parseInt(quickCreateContentHeight);
-			if (contentHeight > 300) {
+			var maxHeight = app.getScreenHeight(70);
+			if (contentHeight > maxHeight) {
 				app.showScrollBar(jQuery('.quickCreateContent'), {
-					'height': '300px'
+					'height': maxHeight + 'px'
 				});
 			}
 
@@ -414,14 +414,6 @@ jQuery.Class("Vtiger_Header_Js", {
 				return false;
 			} else {
 				var invalidFields = form.data('jqv').InvalidFields;
-
-				// save ckeditor values to inputs before submitting
-				jQuery('textarea[id$="_qc"]').each(function () {
-					var thisId = jQuery(this).attr('id');
-					var ckValue = CKEDITOR.instances[thisId].getData();
-					jQuery(this).val(ckValue);
-				});
-
 				if (invalidFields.length > 0) {
 					//If validation fails, form should submit again
 					form.removeData('submit');
@@ -458,7 +450,6 @@ jQuery.Class("Vtiger_Header_Js", {
 					targetInstance.quickCreateSave(form).then(
 							function (data) {
 								app.hideModalWindow();
-								//fix for Refresh list view after Quick create 
 								var parentModule = app.getModuleName();
 								var viewname = app.getViewName();
 								if ((module == parentModule) && (viewname == "List")) {
@@ -594,6 +585,7 @@ jQuery.Class("Vtiger_Header_Js", {
 						var url = 'index.php?module=' + selectedItemData.module + '&view=Detail&record=' + selectedItemData.id;
 						window.location.href = url;
 					}
+					return false;
 				},
 				close: function (event, ui) {
 					//jQuery('.globalSearchValue').val('');
@@ -628,7 +620,12 @@ jQuery.Class("Vtiger_Header_Js", {
 		var maxValues = 20;
 		var BtnText = '';
 		var BtnLink = 'javascript:void();';
-		var history = localStorage.history;
+		var userId = app.getMainParams('current_user_id');
+		if(userId == undefined){
+			return false;
+		}
+		var key = 'yf_history_' + userId;
+		var history = localStorage.getItem(key);
 		if (history != "" && history != null) {
 			var sp = history.toString().split("_|_");
 			var item = sp[sp.length - 1].toString().split("|");
@@ -674,13 +671,13 @@ jQuery.Class("Vtiger_Header_Js", {
 			if (sp.length >= maxValues) {
 				sp.splice(0, 1);
 			}
-			localStorage.history = sp.join('_|_');
+			localStorage.setItem(key, sp.join('_|_'));
 		} else {
 			var stack = new Array();
 			var Label = this.getHistoryLabel();
 			if (Label.length > 1) {
 				stack.push(this.getHistoryLabel() + '|' + document.URL + '|' + date);
-				localStorage.history = stack.join('_|_');
+				localStorage.setItem(key, stack.join('_|_'));
 			}
 		}
 		htmlContent += '<li class="divider"></li><li><a class="clearHistory" href="#">' + app.vtranslate('JS_CLEAR_HISTORY') + '</a></li>';
@@ -697,7 +694,8 @@ jQuery.Class("Vtiger_Header_Js", {
 	},
 	registerClearHistory: function () {
 		$(".historyBtn .clearHistory").click(function () {
-			localStorage.history = "";
+			var key = 'yf_history_' + app.getMainParams('current_user_id');
+			localStorage.removeItem(key);
 			var htmlContent = '<li class="divider"></li><li><a class="clearHistory" href="#">' + app.vtranslate('JS_CLEAR_HISTORY') + '</a></li>';
 			$(".historyBtn .dropdown-menu").html(htmlContent);
 		});
@@ -934,7 +932,7 @@ jQuery.Class("Vtiger_Header_Js", {
 		});
 
 		thisInstance.basicSearch();
-		jQuery('.quickCreateModules,#compactquickCreate,#topMenus').on("click", ".quickCreateModule", function (e, params) {
+		jQuery('.quickCreateModules').on("click", ".quickCreateModule", function (e, params) {
 			var moduleName = jQuery(e.currentTarget).data('name');
 			thisInstance.quickCreateModule(moduleName);
 		});

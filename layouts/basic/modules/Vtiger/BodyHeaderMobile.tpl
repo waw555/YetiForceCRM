@@ -22,7 +22,7 @@
 					<div class="pull-right">
 						<a class="btn btn-default" title="{vtranslate('LBL_REMINDER',$MODULE)}" href="#">
 							<span class="glyphicon glyphicon-calendar" aria-hidden="true"></span>
-							<span class="badge hide">0</span>
+							<span class="badge hide bgDanger">0</span>
 						</a>
 					</div>
 				</div>
@@ -42,11 +42,14 @@
 				</div>
 			</div>
 		{/if}
-		{if Users_Privileges_Model::isPermitted('Dashboard', 'NotificationPreview')}
+			{if Users_Privileges_Model::isPermitted('Notification', 'DetailView')}
 			<div class="row">
 				<div class="notificationsNotice quickAction{if AppConfig::module('Home', 'AUTO_REFRESH_REMINDERS')} autoRefreshing{/if}">
-					<div class="btn-group">
-						<a class="btn btn-default btn-sm isBadge" title="{vtranslate('LBL_NOTIFICATIONS',$MODULE)}" href="index.php?module=Home&view=NotificationsList">
+					<div class="pull-left">
+						{vtranslate('LBL_NOTIFICATIONS',$MODULE)}
+					</div>
+ 					<div class="pull-right">
+ 						<a class="btn btn-default isBadge" title="{vtranslate('LBL_NOTIFICATIONS',$MODULE)}" href="index.php?module=Notification&view=List">
 							<span class="glyphicon glyphicon-bell" aria-hidden="true"></span>
 							<span class="badge hide">0</span>
 						</a>
@@ -103,35 +106,37 @@
 			</div>
 		</div>
 	</div>
-	<div class="searchMenu globalSearchInput">
-		<div class="input-group">
-			<select class="chzn-select basicSearchModulesList form-control col-md-5" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
-				<option value="" class="globalSearch_module_All">{vtranslate('LBL_ALL_RECORDS', $MODULE_NAME)}</option>
-				{foreach key=MODULE_NAME item=fieldObject from=$SEARCHABLE_MODULES}
-					{if isset($SEARCHED_MODULE) && $SEARCHED_MODULE eq $MODULE_NAME && $SEARCHED_MODULE !== 'All'}
-						<option value="{$MODULE_NAME}" selected>{vtranslate($MODULE_NAME,$MODULE_NAME)}</option>
-					{else}
-						<option value="{$MODULE_NAME}" >{vtranslate($MODULE_NAME,$MODULE_NAME)}</option>
-					{/if}
-				{/foreach}
-			</select>
-			<div class="input-group-btn">
-				<div class="pull-right">
-					<button class="btn btn-default globalSearch " title="{vtranslate('LBL_ADVANCE_SEARCH')}" type="button">
-						<span class="glyphicon glyphicon-th-large"></span>
-					</button>
+	{if AppConfig::performance('GLOBAL_SEARCH')}
+		<div class="searchMenu globalSearchInput">
+			<div class="input-group">
+				<select class="chzn-select basicSearchModulesList form-control col-md-5" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
+					<option value="" class="globalSearch_module_All">{vtranslate('LBL_ALL_RECORDS', $MODULE_NAME)}</option>
+					{foreach key=MODULE_NAME item=fieldObject from=$SEARCHABLE_MODULES}
+						{if isset($SEARCHED_MODULE) && $SEARCHED_MODULE eq $MODULE_NAME && $SEARCHED_MODULE !== 'All'}
+							<option value="{$MODULE_NAME}" selected>{vtranslate($MODULE_NAME,$MODULE_NAME)}</option>
+						{else}
+							<option value="{$MODULE_NAME}" >{vtranslate($MODULE_NAME,$MODULE_NAME)}</option>
+						{/if}
+					{/foreach}
+				</select>
+				<div class="input-group-btn">
+					<div class="pull-right">
+						<button class="btn btn-default globalSearch " title="{vtranslate('LBL_ADVANCE_SEARCH')}" type="button">
+							<span class="glyphicon glyphicon-th-large"></span>
+						</button>
+					</div>
+				</div>
+			</div>
+			<div class="input-group">
+				<input type="text" class="form-control globalSearchValue" title="{vtranslate('LBL_GLOBAL_SEARCH')}" placeholder="{vtranslate('LBL_GLOBAL_SEARCH')}" results="10" />
+				<div class="input-group-btn">
+					<div class="pull-right">
+						<button class="btn btn-default searchIcon" type="button">
+							<span class="glyphicon glyphicon-search"></span>
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
-		<div class="input-group">
-			<input type="text" class="form-control globalSearchValue" title="{vtranslate('LBL_GLOBAL_SEARCH')}" placeholder="{vtranslate('LBL_GLOBAL_SEARCH')}" results="10" />
-			<div class="input-group-btn">
-				<div class="pull-right">
-					<button class="btn btn-default searchIcon" type="button">
-						<span class="glyphicon glyphicon-search"></span>
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
+	{/if}
 {/strip}

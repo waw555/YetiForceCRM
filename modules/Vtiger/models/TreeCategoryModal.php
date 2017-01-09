@@ -165,7 +165,8 @@ class Vtiger_TreeCategoryModal_Model extends Vtiger_Base_Model
 		}
 		$pagingModel = new Vtiger_Paging_Model();
 		$pagingModel->set('limit', 'no_limit');
-		$listEntries = $listViewModel->getListViewEntries($pagingModel, true);
+		$listViewModel->get('query_generator')->setField($this->getTreeField()['fieldname']);
+		$listEntries = $listViewModel->getListViewEntries($pagingModel);
 		return $listEntries;
 	}
 

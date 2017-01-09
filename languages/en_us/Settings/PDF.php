@@ -5,8 +5,11 @@
  * @license licenses/License.html
  * @author Maciej Stencel <m.stencel@yetiforce.com>
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 $languageStrings = [
+	'PLL_TEXT' => 'Text',
+	'PLL_IMAGE' => 'Image',
 	'LBL_PDF' => 'PDF',
 	'LBL_PDF_DESCRIPTION' => 'Test version of the PDF template configuration',
 	'LBL_CREATING_PDF' => 'Create PDF template',
@@ -26,8 +29,8 @@ $languageStrings = [
 	'LBL_DOCUMENT_PERMISSIONS' => 'Permissions',
 	'LBL_DOCUMENT_WATERMARK' => 'Watermark',
 	'Module' => 'Module',
-	'active' => 'Active',
-	'inactive' => 'Inactive',
+	'PLL_ACTIVE' => 'Active',
+	'PLL_INACTIVE' => 'Inactive',
 	'LBL_PRIMARY_NAME' => 'Primary name',
 	'LBL_SECONDARY_NAME' => 'Additional name',
 	'LBL_FOLDER_NAME' => 'Folder name',
@@ -106,6 +109,8 @@ $languageStrings = [
 	'LBL_FOOTER_HEIGHT' => 'Footer margin',
 	'LBL_HEADER_IN_MILIMETERS' => 'Header margin from the top of the page in millimeters',
 	'LBL_FOOTER_IN_MILIMETERS' => 'Footer margin from the bottom of the page in millimeters',
+	'LBL_GENERATE_ONE_PDF' => 'Generate one PDF for many records',
+	'LBL_GENERATE_ONE_PDF_INFO' => 'In case when PDF includes a special function that generates one table for many records, checking this box will result in generating one PDF file.',
 	// page format names
 	'4A0' => '4A0',
 	'2A0' => '2A0',

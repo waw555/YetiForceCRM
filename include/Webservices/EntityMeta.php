@@ -33,7 +33,7 @@ abstract class EntityMeta
 	protected $ownerFields;
 	protected $moduleFields = null;
 
-	protected function EntityMeta($webserviceObject, $user)
+	protected function __construct($webserviceObject, $user)
 	{
 		$this->webserviceObject = $webserviceObject;
 		$this->objectName = $this->webserviceObject->getEntityName();
@@ -93,7 +93,7 @@ abstract class EntityMeta
 
 			$moduleFields = $this->getModuleFields();
 			foreach ($moduleFields as $fieldName => $webserviceField) {
-				foreach (Vtiger_Field_Model::$REFERENCE_TYPES as $type) {
+				foreach (Vtiger_Field_Model::$referenceTypes as $type) {
 					if (strcasecmp($webserviceField->getFieldDataType(), $type) === 0) {
 						$this->referenceFieldDetails[$fieldName] = $webserviceField->getReferenceList();
 					}
@@ -179,12 +179,12 @@ abstract class EntityMeta
 		return $this->columnTableMapping;
 	}
 
-	function getUser()
+	public function getUser()
 	{
 		return $this->user;
 	}
 
-	function hasMandatoryFields($row)
+	public function hasMandatoryFields($row)
 	{
 
 		$mandatoryFields = $this->getMandatoryFields();

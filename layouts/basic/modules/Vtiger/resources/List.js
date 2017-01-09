@@ -48,32 +48,35 @@ jQuery.Class("Vtiger_List_Js", {
 		if (validationResult != true) {
 			var selectedIds = listInstance.readSelectedIds(true);
 			var excludedIds = listInstance.readExcludedIds(true);
-			var cvId = listInstance.getCurrentCvId();
 			var postData = listInstance.getDefaultParams();
-
-			delete postData.module;
-			delete postData.view;
 			delete postData.parent;
+			postData.module = app.getModuleName();
+			postData.view = 'SendMailModal';
 			postData.selected_ids = selectedIds;
 			postData.excluded_ids = excludedIds;
-			postData.cvid = cvId;
-			postData.sourceModule = app.getModuleName();
+			postData.cvid = listInstance.getCurrentCvId();
 			if (params) {
 				jQuery.extend(postData, params);
 			}
-			var actionParams = {
-				"type": "POST",
-				"url": 'index.php?module=OSSMail&view=SendMailModal',
-				"dataType": "html",
-				"data": postData
-			};
-			AppConnector.request(actionParams).then(function (appData) {
-				app.showModalWindow(appData, function (data) {
+			AppConnector.request(postData).then(function (response) {
+				app.showModalWindow(response, function (data) {
 					data.find('[name="saveButton"]').click(function (e) {
-						var emails = data.find('#emails').val();
-						emails = $.parseJSON(emails);
-						app.hideModalWindow(data);
-						Vtiger_Index_Js.sendMailWindow(data.find('#url').val(), 1, {emails: emails});
+						if (data.find('form').validationEngine('validate')) {
+							jQuery.extend(postData, {
+								field: data.find('#field').val(),
+								template: data.find('#template').val(),
+								action: 'Mail',
+								mode: 'sendMails',
+							});
+							delete postData.view;
+							AppConnector.request(postData).then(function (response) {
+								if(response.result == true){
+									app.hideModalWindow();
+								}
+							}, function (data, err) {
+								app.hideModalWindow();
+							})
+						}
 					});
 				});
 			});
@@ -91,7 +94,7 @@ jQuery.Class("Vtiger_List_Js", {
 		var validationResult = listInstance.checkListRecordSelected();
 		if (validationResult != true) {
 			var progressIndicatorElement = jQuery.progressIndicator();
-			Vtiger_Helper_Js.checkServerConfig(module).then(function (data) {
+			Vtiger_Index_Js.checkMailConfig().then(function (data) {
 				progressIndicatorElement.progressIndicator({'mode': 'hide'});
 				if (data == true) {
 					Vtiger_List_Js.triggerMassAction(massActionUrl);
@@ -326,24 +329,35 @@ jQuery.Class("Vtiger_List_Js", {
 									'mode': 'hide'
 								})
 								if (data.success) {
+									var paginationObject = $('.pagination');
+									var totalCount = paginationObject.data('totalCount');
+									if (totalCount != '') {
+										totalCount--;
+										paginationObject.data('totalCount', totalCount);
+									}
 									var orderBy = jQuery('#orderBy').val();
 									var sortOrder = jQuery("#sortOrder").val();
-									var urlParams = {
-										"viewname": data.result.viewname,
-										"orderby": orderBy,
-										"sortorder": sortOrder
+									var pageNumber = parseInt($('#pageNumber').val());
+									if ($('#noOfEntries').val() == 1 && pageNumber != 1) {
+										pageNumber--;
 									}
+									var urlParams = {
+										viewname: data.result.viewname,
+										orderby: orderBy,
+										sortorder: sortOrder,
+										page: pageNumber,
+									};
 									jQuery('#recordsCount').val('');
 									jQuery('#totalPageCount').text('');
 									listInstance.getListViewRecords(urlParams).then(function () {
-										listInstance.updatePagination();
+										listInstance.updatePagination(pageNumber);
 										aDeferred.resolve();
 									});
 								} else {
 									var params = {
 										text: app.vtranslate(data.error.message),
 										title: app.vtranslate('JS_LBL_PERMISSION')
-									}
+									};
 									Vtiger_Helper_Js.showPnotify(params);
 								}
 							},
@@ -359,7 +373,6 @@ jQuery.Class("Vtiger_List_Js", {
 	},
 	triggerMassAction: function (massActionUrl, callBackFunction, beforeShowCb, css) {
 
-		//TODO : Make the paramters as an object
 		if (typeof beforeShowCb == 'undefined') {
 			beforeShowCb = function () {
 				return true;
@@ -452,16 +465,11 @@ jQuery.Class("Vtiger_List_Js", {
 			var massEditForm = container.find('#massEdit');
 			massEditForm.validationEngine(app.validationEngineOptions);
 			var listInstance = Vtiger_List_Js.getInstance();
-			listInstance.inactiveFieldValidation(massEditForm);
-			listInstance.registerReferenceFieldsForValidation(massEditForm);
-			listInstance.registerFieldsForValidation(massEditForm);
+			listInstance.inactiveFieldsValidation(massEditForm);
 			listInstance.registerEventForTabClick(massEditForm);
 			var editInstance = Vtiger_Edit_Js.getInstance();
 			editInstance.registerBasicEvents(massEditForm);
-			//To remove the change happended for select elements due to picklist dependency
-			container.find('select').trigger('change', {'forceDeSelect': true});
 			listInstance.postMassEdit(container);
-
 			listInstance.registerSlimScrollMassEdit();
 		}, {'width': '65%'});
 	},
@@ -492,9 +500,10 @@ jQuery.Class("Vtiger_List_Js", {
 		var excludedIds = listInstance.readExcludedIds(true);
 		var cvId = listInstance.getCurrentCvId();
 		var pageNumber = jQuery('#pageNumber').val();
-
-		exportActionUrl += '&selected_ids=' + selectedIds + '&excluded_ids=' + excludedIds + '&viewname=' + cvId + '&page=' + pageNumber;
-
+		if ('undefined' === typeof cvId)
+			exportActionUrl += '&selected_ids=' + selectedIds + '&excluded_ids=' + excludedIds + '&page=' + pageNumber;
+		else
+			exportActionUrl += '&selected_ids=' + selectedIds + '&excluded_ids=' + excludedIds + '&viewname=' + cvId + '&page=' + pageNumber;
 		var listViewInstance = Vtiger_List_Js.getInstance();
 		if (listViewInstance.getListSearchInstance()) {
 			var searchValue = listViewInstance.getListSearchInstance().getAlphabetSearchValue();
@@ -583,6 +592,72 @@ jQuery.Class("Vtiger_List_Js", {
 		app.showModalWindow(null, url, function () {
 			progressIndicatorElement.progressIndicator({'mode': 'hide'})
 		});
+	},
+	showMap: function () {
+		var selectedParams = Vtiger_List_Js.getSelectedRecordsParams(false);
+		var url = 'index.php?module=OpenStreetMap&view=MapModal&srcModule=' + app.getModuleName();
+		app.showModalWindow(null, url, function (container) {
+			var mapView = new OpenStreetMap_Map_Js();
+			mapView.setSelectedParams(selectedParams);
+			mapView.registerModalView(container);
+
+		});
+	},
+	triggerReviewChanges: function (reviewUrl) {
+		var listInstance = Vtiger_List_Js.getInstance();
+		var validationResult = listInstance.checkListRecordSelected();
+		if (validationResult != true) {
+			// Compute selected ids, excluded ids values, along with cvid value and pass as url parameters
+			var selectedIds = listInstance.readSelectedIds(true);
+			var excludedIds = listInstance.readExcludedIds(true);
+			var cvId = listInstance.getCurrentCvId();
+			var message = app.vtranslate('JS_MASS_REVIEWING_CHANGES_CONFIRMATION');
+			Vtiger_Helper_Js.showConfirmationBox({'message': message}).then(
+					function (e) {
+						var url = reviewUrl + '&viewname=' + cvId + '&selected_ids=' + selectedIds + '&excluded_ids=' + excludedIds;
+						if (listInstance.getListSearchInstance()) {
+							var searchValue = listInstance.getListSearchInstance().getAlphabetSearchValue();
+							url += "&search_params=" + JSON.stringify(listInstance.getListSearchInstance().getListSearchParams());
+							if ((typeof searchValue != "undefined") && (searchValue.length > 0)) {
+								url += '&search_key=' + listInstance.getListSearchInstance().getAlphabetSearchField();
+								url += '&search_value=' + searchValue;
+								url += '&operator=s';
+							}
+						}
+						var deleteMessage = app.vtranslate('JS_LOADING_PLEASE_WAIT');
+						var progressIndicatorElement = jQuery.progressIndicator({
+							'message': deleteMessage,
+							'position': 'html',
+							'blockInfo': {
+								'enabled': true
+							}
+						});
+						AppConnector.request(url).then(
+								function (data) {
+									progressIndicatorElement.progressIndicator({
+										'mode': 'hide'
+									});
+									if (data.result) {
+										var params = {
+											text: data.result,
+											type: 'info'
+										}
+										Vtiger_Helper_Js.showPnotify(params);
+									} else {
+										listInstance.getListViewRecords();
+									}
+								},
+								function (error, err) {
+									app.errorLog(error, err);
+								}
+						);
+					},
+					function (error, err) {
+						Vtiger_List_Js.clearList();
+					})
+		} else {
+			listInstance.noRecordSelectedAlert();
+		}
 	}
 }, {
 	//contains the List View element.
@@ -660,7 +735,7 @@ jQuery.Class("Vtiger_List_Js", {
 		var listSearchInstance = this.getListSearchInstance();
 		if (listSearchInstance !== false) {
 			var searchValue = this.getListSearchInstance().getAlphabetSearchValue();
-			params.search_params = JSON.stringify(this.getListSearchInstance().getListSearchParams());
+			params.search_params = JSON.stringify(this.getListSearchInstance().getListSearchParams(true));
 			if ((typeof searchValue != "undefined") && (searchValue.length > 0)) {
 				params['search_key'] = this.getListSearchInstance().getAlphabetSearchField();
 				params['search_value'] = searchValue;
@@ -795,46 +870,7 @@ jQuery.Class("Vtiger_List_Js", {
 			isMassEdit = false;
 		}
 		var aDeferred = jQuery.Deferred();
-		var massActionUrl = form.serializeFormData();
 		if (isMassEdit) {
-			var fieldsChanged = false;
-			var massEditFieldList = jQuery('#massEditFieldsNameList').data('value');
-			for (var fieldName in massEditFieldList) {
-				var fieldInfo = massEditFieldList[fieldName];
-				var fieldElement = form.find('[name="' + fieldInfo.name + '"]');
-				if (fieldInfo.type == "reference" || fieldInfo.type == "tree") {
-					//get the element which will be shown which has "_display" appended to actual field name
-					fieldElement = form.find('[name="' + fieldInfo.name + '_display"]');
-				} else if (fieldInfo.type == "multipicklist" || fieldInfo.type == "sharedOwner") {
-					fieldElement = form.find('[name="' + fieldInfo.name + '[]"]');
-				}
-
-				//Not all fields will be enabled for mass edit
-				if (fieldElement.length == 0) {
-					continue;
-				}
-
-				var validationElement = fieldElement.filter('[data-validation-engine]');
-				//check if you have element enabled has changed
-				if (validationElement.length == 0) {
-					if (fieldInfo.type == "multipicklist" || fieldInfo.type == "sharedOwner") {
-						fieldName = fieldName + "[]";
-					}
-					delete massActionUrl[fieldName];
-					if (fieldsChanged != true) {
-						fieldsChanged = false;
-					}
-				} else {
-					fieldsChanged = true;
-				}
-			}
-			if (fieldsChanged == false) {
-				Vtiger_Helper_Js.showPnotify(app.vtranslate('NONE_OF_THE_FIELD_VALUES_ARE_CHANGED_IN_MASS_EDIT'));
-				form.find('[name="saveButton"]').removeAttr('disabled');
-				aDeferred.reject();
-				return aDeferred.promise();
-			}
-			//on submit form trigger the massEditPreSave event
 			var massEditPreSaveEvent = jQuery.Event(Vtiger_List_Js.massEditPreSave);
 			form.trigger(massEditPreSaveEvent);
 			if (massEditPreSaveEvent.isDefaultPrevented()) {
@@ -842,7 +878,17 @@ jQuery.Class("Vtiger_List_Js", {
 				aDeferred.reject();
 				return aDeferred.promise();
 			}
+			form.find('[id^="selectRow"]').each(function (index, checkbox) {
+				checkbox = jQuery(checkbox);
+				if (!checkbox.prop('checked')) {
+					checkbox.closest('.rowElements').find('.fieldValue [name]').each(function (index, element) {
+						element = jQuery(element);
+						element.attr('data-element-name', element.attr('name')).removeAttr('name');
+					});
+				}
+			});
 		}
+		var massActionUrl = form.serializeFormData();
 		var progressIndicatorElement = jQuery.progressIndicator({
 			'position': 'html',
 			'blockInfo': {
@@ -866,6 +912,7 @@ jQuery.Class("Vtiger_List_Js", {
 				},
 				function (error, err) {
 					app.hideModalWindow();
+					app.errorLog(error, err);
 					aDeferred.reject(error, err);
 				}
 		);
@@ -1002,17 +1049,69 @@ jQuery.Class("Vtiger_List_Js", {
 		}
 		return false;
 	},
+	inactiveFieldValidation: function (field) {
+		field.validationEngine('hide');
+		var form = field.closest('form');
+		var invalidFields = form.data('jqv').InvalidFields;
+		var fields = [field.get(0)];
+
+		var validationVal = field.attr('data-validation-engine');
+		field.attr('data-invalid-validation-engine', validationVal ? validationVal : 'validate[]');
+		field.removeAttr('data-validation-engine');
+
+		if (field.is('select') && field.hasClass('chzn-select')) {
+			var chosenElement = app.getChosenElementFromSelect(field);
+			chosenElement.validationEngine('hide');
+			fields.push(chosenElement.get(0));
+		}
+		for (var i in fields) {
+			var response = jQuery.inArray(fields[i], invalidFields);
+			if (response != '-1') {
+				invalidFields.splice(response, 1);
+			}
+		}
+	},
+	activeFieldValidation: function (field) {
+		var validationVal = field.attr('data-invalid-validation-engine');
+		field.attr('data-validation-engine', validationVal ? validationVal : 'validate[]');
+		field.removeAttr('data-invalid-validation-engine');
+	},
 	postMassEdit: function (massEditContainer) {
 		var thisInstance = this;
+		var editInstance = Vtiger_Edit_Js.getInstance();
+		massEditContainer.find('.selectRow').on('change', function (e) {
+			var element = jQuery(e.currentTarget);
+			var blockElement = element.closest('.rowElements').find('.fieldValue');
+			var fieldElement = blockElement.find('[data-validation-engine],[data-invalid-validation-engine]');
+			var fieldInfo = fieldElement.data('fieldinfo');
+			if (element.prop('checked')) {
+				thisInstance.activeFieldValidation(fieldElement);
+			} else {
+				thisInstance.inactiveFieldValidation(fieldElement);
+			}
+			if (fieldInfo !== undefined && fieldInfo.type === 'reference') {
+				var mapFields = editInstance.getMappingRelatedField(fieldInfo.name, editInstance.getReferencedModuleName(blockElement), massEditContainer);
+				$.each(mapFields, function (key, value) {
+					var checkboxElement = massEditContainer.find('[id="selectRow' + key + '"]');
+					if (checkboxElement.length && checkboxElement.prop('disabled')) {
+						checkboxElement.prop('disabled', false);
+						checkboxElement.trigger('click');
+						checkboxElement.prop('disabled', true);
+					}
+				});
+			}
+		})
 		massEditContainer.find('form').on('submit', function (e) {
 			e.preventDefault();
 			var form = jQuery(e.currentTarget);
-			var invalidFields = form.data('jqv').InvalidFields;
-			if (invalidFields.length == 0) {
-				form.find('[name="saveButton"]').attr('disabled', "disabled");
+			if (!form.find('input[id^="selectRow"]:checked').length) {
+				Vtiger_Helper_Js.showPnotify(app.vtranslate('NONE_OF_THE_FIELD_VALUES_ARE_CHANGED_IN_MASS_EDIT'));
+				return;
 			}
 			var invalidFields = form.data('jqv').InvalidFields;
-			if (invalidFields.length > 0) {
+			if (invalidFields.length == 0) {
+				form.find('[name="saveButton"]').prop('disabled', true);
+			} else {
 				return;
 			}
 			thisInstance.massActionSave(form, true).then(
@@ -1021,6 +1120,7 @@ jQuery.Class("Vtiger_List_Js", {
 						Vtiger_List_Js.clearList();
 					},
 					function (error, err) {
+						app.errorLog(error, err);
 					}
 			)
 		});
@@ -1031,7 +1131,10 @@ jQuery.Class("Vtiger_List_Js", {
 	registerPageNavigationEvents: function () {
 		var aDeferred = jQuery.Deferred();
 		var thisInstance = this;
-		jQuery('#listViewNextPageButton').on('click', function () {
+		jQuery('#listViewNextPageButton').on('click', function (e) {
+			if ($(this).hasClass('disabled')) {
+				return;
+			}
 			var pageLimit = jQuery('#pageLimit').val();
 			var noOfEntries = jQuery('#noOfEntries').val();
 			if (noOfEntries == pageLimit) {
@@ -1112,6 +1215,7 @@ jQuery.Class("Vtiger_List_Js", {
 			);
 		});
 		$('#totalCountBtn').on('click', function () {
+			app.hidePopover(jQuery(this));
 			var paramsNotifier = {
 				title: app.vtranslate('JS_LBL_PERMISSION'),
 				text: app.vtranslate('JS_GET_PAGINATION_INFO'),
@@ -1319,7 +1423,6 @@ jQuery.Class("Vtiger_List_Js", {
 			}
 		}
 	},
-	//Fix for empty Recycle bin 
 	ListViewPostOperation: function () {
 		return true;
 	},
@@ -1442,6 +1545,8 @@ jQuery.Class("Vtiger_List_Js", {
 		listViewPageDiv.on('click', '.listViewHeaderValues', function (e) {
 			var fieldName = jQuery(e.currentTarget).data('columnname');
 			var sortOrderVal = jQuery(e.currentTarget).data('nextsortorderval');
+			if (typeof sortOrderVal === 'undefined')
+				return;
 			var cvId = thisInstance.getCurrentCvId();
 			var urlParams = {
 				"orderby": fieldName,
@@ -1641,6 +1746,8 @@ jQuery.Class("Vtiger_List_Js", {
 				return;
 			if (jQuery(e.target).is('input[type="checkbox"]'))
 				return;
+			if ($.contains(jQuery(e.currentTarget).find('td:last-child').get(0), e.target))
+				return;
 			var elem = jQuery(e.currentTarget);
 			var recordUrl = elem.data('recordurl');
 			if (typeof recordUrl == 'undefined') {
@@ -1694,7 +1801,7 @@ jQuery.Class("Vtiger_List_Js", {
 	 * this will remove data-validation-engine attr of all the elements
 	 * @param Accepts form as a parameter
 	 */
-	inactiveFieldValidation: function (form) {
+	inactiveFieldsValidation: function (form) {
 		var massEditFieldList = jQuery('#massEditFieldsNameList').data('value');
 		for (var fieldName in massEditFieldList) {
 			var fieldInfo = massEditFieldList[fieldName];
@@ -1720,44 +1827,9 @@ jQuery.Class("Vtiger_List_Js", {
 				validationVal = elemData.validationEngine;
 				delete elemData.validationEngine;
 			}
-			fieldElement.data('invalidValidationEngine', validationVal);
+			fieldElement.attr('data-invalid-validation-engine', validationVal);
 			fieldElement.removeAttr('data-validation-engine');
 		}
-	},
-	/**
-	 * function to register field for validation
-	 * this will add the data-validation-engine attr of all the elements
-	 * make the field available for validation
-	 * @param Accepts form as a parameter
-	 */
-	registerFieldsForValidation: function (form) {
-		form.find('.fieldValue').on('change', 'input,select,textarea', function (e, params) {
-			if (typeof params == 'undefined') {
-				params = {};
-			}
-
-			if (typeof params.forceDeSelect == 'undefined') {
-				params.forceDeSelect = false;
-			}
-			var element = jQuery(e.currentTarget);
-			var fieldValue = element.val();
-			var parentTd = element.closest('td');
-			if (((fieldValue == "" || fieldValue == null) && (typeof (element.attr('data-validation-engine')) != "undefined")) || params.forceDeSelect) {
-				if (parentTd.hasClass('massEditActiveField')) {
-					parentTd.removeClass('massEditActiveField');
-				}
-				element.removeAttr('data-validation-engine');
-				element.validationEngine('hide');
-				var invalidFields = form.data('jqv').InvalidFields;
-				var response = jQuery.inArray(element.get(0), invalidFields);
-				if (response != '-1') {
-					invalidFields.splice(response, 1);
-				}
-			} else if ((fieldValue != "") && (typeof (element.attr('data-validation-engine')) == "undefined")) {
-				element.attr('data-validation-engine', element.data('invalidValidationEngine'));
-				parentTd.addClass('massEditActiveField');
-			}
-		})
 	},
 	registerEventForTabClick: function (form) {
 		var ulContainer = form.find('.massEditTabs');
@@ -1768,33 +1840,6 @@ jQuery.Class("Vtiger_List_Js", {
 				e.stopPropagation();
 			}
 		});
-	},
-	registerReferenceFieldsForValidation: function (form) {
-		var referenceField = form.find('.sourceField');
-		form.find('.sourceField').on(Vtiger_Edit_Js.referenceSelectionEvent, function (e, params) {
-			var element = jQuery(e.currentTarget);
-			var elementName = element.attr('name');
-			var fieldDisplayName = elementName + "_display";
-			var fieldDisplayElement = form.find('input[name="' + fieldDisplayName + '"]');
-			if (params.selectedName == "") {
-				return;
-			}
-			fieldDisplayElement.attr('data-validation-engine', fieldDisplayElement.data('invalidValidationEngine'));
-			var parentTd = fieldDisplayElement.closest('td');
-			if (!parentTd.hasClass('massEditActiveField')) {
-				parentTd.addClass('massEditActiveField');
-			}
-		})
-		form.find('.clearReferenceSelection').on(Vtiger_Edit_Js.referenceDeSelectionEvent, function (e) {
-			var sourceField = form.find('.sourceField');
-			var sourceFieldName = sourceField.attr('name');
-			var fieldDisplayName = sourceFieldName + "_display";
-			var fieldDisplayElement = form.find('input[name="' + fieldDisplayName + '"]').removeAttr('data-validation-engine');
-			var parentTd = fieldDisplayElement.closest('td');
-			if (parentTd.hasClass('massEditActiveField')) {
-				parentTd.removeClass('massEditActiveField');
-			}
-		})
 	},
 	registerSlimScrollMassEdit: function () {
 		app.showScrollBar(jQuery('div[name="massEditContent"]'), {'height': '100%'});
@@ -1849,16 +1894,6 @@ jQuery.Class("Vtiger_List_Js", {
 		listViewTopMenuDiv.on('click', '.featuredLabel', function (e) {
 			var cvId = jQuery(this).data('cvid');
 			thisInstance.getFilterSelectElement().val(cvId).trigger('change')
-		})
-		var elemente = app.showPopoverElementView(listViewTopMenuDiv.find('.featuredInfoPopover'), {trigger: 'click', html: true});
-		elemente.trigger('click').trigger('click');
-		elemente.on('shown.bs.popover', function (e, i) {
-			var element = jQuery(e.currentTarget);
-			var popover = element.next();
-			app.showScrollBar(popover.find('.popover-content'), {
-				height: '200px',
-				railVisible: true,
-			});
 		});
 	},
 	triggerDisplayTypeEvent: function () {
@@ -1927,11 +1962,14 @@ jQuery.Class("Vtiger_List_Js", {
 		};
 		AppConnector.request(actionParams).then(function (appData) {
 			var data = appData.result;
-			for (var i in data) {
-				if (data[i] > 0) {
-					listViewContentDiv.find('tr[data-id="' + i + '"] .unreviewed .badge').text(data[i]);
+			$.each(data, function (id, value) {
+				if (value.a > 0) {
+					listViewContentDiv.find('tr[data-id="' + id + '"] .unreviewed .badge.all').text(value.a);
 				}
-			}
+				if (value.m > 0) {
+					listViewContentDiv.find('tr[data-id="' + id + '"] .unreviewed .badge.mail').text(value.m);
+				}
+			});
 			Vtiger_Helper_Js.showHorizontalTopScrollBar();
 		});
 	},

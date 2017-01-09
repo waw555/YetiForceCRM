@@ -25,6 +25,7 @@ $languageStrings = [
 	'LBL_COLORS' => 'Couleurs',
 	'LBL_PRIORITY' => 'Priorité',
 	'LBL_MODULE' => 'Module',
+	'LBL_LDAP_RECOMMENDED_INFO' => 'We do not recommend selecting users with admin permissions for LDAP authorization. In case of authorization problems there must be a user who is able to log in without LDAP integration.',
 	//Auth
 	'LBL_AUTHORIZATION' => 'LDAP',
 	'LBL_AUTHORIZATION_DESCRIPTION' => ' ',
@@ -53,6 +54,6 @@ $languageStrings = [
 ];
 $jsLanguageStrings = [
 	'JS_USER_MAIL_EXIST' => 'Un utilisateur avec cette adresse email existe déjà',
-	'JS_DECIMAL_SEPERATOR_AND_GROUPING_SEPERATOR_CANT_BE_SAME' => 'Le séparateur des décimales et des milliers ne peuvent être identiques',
+	'JS_DECIMAL_SEPARATOR_AND_GROUPING_SEPARATOR_CANT_BE_SAME' => 'Le séparateur des décimales et des milliers ne peuvent être identiques',
 	'Changed password successfully' => 'Mot de passe modifié avec succès',
 ];

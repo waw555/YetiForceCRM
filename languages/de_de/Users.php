@@ -44,6 +44,9 @@ $languageStrings = [
 	'Home Phone' => 'Telefon privat',
 	'INTERNAL_MAIL_COMPOSER' => 'Internes E-Mail-Programm',
 	'Language' => 'Sprache',
+	'FL_AVAILABLE' => 'Available',
+	'FL_AUTO_ASSIGN_RECORDS' => 'Auto assign records',
+	'FL_RECORD_LIMIT_IN_MODULE' => 'Record limit in module',
 	'LBL_ABOUT_ME' => 'Über mich',
 	'LBL_ACTIVE_USERS' => 'Aktive Benutzer',
 	'LBL_ADD_RECORD' => 'Benutzer hinzufügen',
@@ -122,7 +125,6 @@ $languageStrings = [
 	'Street Address' => 'Straßenadresse',
 	'Summary' => 'Zusammenfassung',
 	'Symbol Placement' => 'Symbol-Plazierung',
-	'Tag Cloud' => 'Tag Wolke',
 	'Theme' => 'Thema',
 	'Time Zone' => 'Zeitzone',
 	'Title' => 'Titel',
@@ -301,7 +303,7 @@ $languageStrings = [
 	'Human Resources Department' => 'Personalabteilung',
 	"Secretary's Office" => "Sekretariat",
 	"Organization" => 'Organisation',
-	"Financial Department" => 'Buchhaltung',
+	"Financial Department" => 'Finanzabteilung',
 	"Production Department" => 'Produktion',
 	"Marketing Department" => 'Marketing',
 	'LBL_MASS_PASSWORD_EDITING' => 'Massenbearbeitung der Benutzer Passwörter',
@@ -318,14 +320,15 @@ $languageStrings = [
 	'PLL_POSTPONED' => 'Zurückgestellt',
 	'PLL_CANCELLED' => 'Abgebrochen',
 	'PLL_COMPLETED' => 'Komplett',
+	'LBL_SELECT_LAYOUT' => 'Select layout',
 	'LBL_SWITCH' => 'Wechsel',
 	'LBL_SWITCH_USER' => 'Benutzer wechseln',
 	'LBL_SWITCH_TO_YOURSELF' => 'Zurückwechseln',
 ];
 
 $jsLanguageStrings = [
-	//Curency seperator validation messages
-	'JS_DECIMAL_SEPERATOR_AND_GROUPING_SEPERATOR_CANT_BE_SAME' => 'Dezimaltrennzeichen und Zifferngruppierungs-Trennzeichen kann nicht gleich sein',
+	//Curency separator validation messages
+	'JS_DECIMAL_SEPARATOR_AND_GROUPING_SEPARATOR_CANT_BE_SAME' => 'Dezimaltrennzeichen und Zifferngruppierungs-Trennzeichen kann nicht gleich sein',
 	'JS_ENTER_CONFIRMATION_PASSWORD' => 'Bitte Passwort bestätigen',
 	'JS_ENTER_NEW_PASSWORD' => 'Bitte geben Sie Ihr neues Passwort ein.',
 	'JS_ENTER_OLD_PASSWORD' => 'Bitte geben Sie Ihr altes Passwort ein.',

@@ -11,15 +11,15 @@
 class Settings_CronTasks_Module_Model extends Settings_Vtiger_Module_Model
 {
 
-	var $baseTable = 'vtiger_cron_task';
-	var $baseIndex = 'id';
-	var $listFields = array('sequence' => 'Sequence', 'name' => 'Cron Job', 'frequency' => 'Frequency(H:M)', 'status' => 'Status', 'laststart' => 'Last Start', 'lastend' => 'Last End');
-	var $nameFields = array('');
-	var $name = 'CronTasks';
+	public $baseTable = 'vtiger_cron_task';
+	public $baseIndex = 'id';
+	public $listFields = array('sequence' => 'Sequence', 'name' => 'Cron Job', 'frequency' => 'Frequency(H:M)', 'status' => 'Status', 'laststart' => 'Last Start', 'lastend' => 'Last End');
+	public $nameFields = array('');
+	public $name = 'CronTasks';
 
 	/**
 	 * Function to get editable fields from this module
-	 * @return <Array> List of fieldNames
+	 * @return array List of fieldNames
 	 */
 	public function getEditableFieldsList()
 	{
@@ -28,19 +28,19 @@ class Settings_CronTasks_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to update sequence of several records
-	 * @param <Array> $sequencesList
+	 * @param array $sequencesList
 	 */
 	public function updateSequence($sequencesList)
 	{
-		$db = PearDatabase::getInstance();
-
-		$updateQuery = "UPDATE vtiger_cron_task SET sequence = CASE";
-
+		$db = App\Db::getInstance();
+		$caseSequence = 'CASE';
 		foreach ($sequencesList as $sequence => $recordId) {
-			$updateQuery .= " WHEN id = $recordId THEN $sequence ";
+			$caseSequence .= ' WHEN ' . $db->quoteColumnName('id') . ' = ' . $db->quoteValue($recordId) . ' THEN ' . $db->quoteValue($sequence);
 		}
-		$updateQuery .= " END";
-		$db->pquery($updateQuery, array());
+		$caseSequence .= ' END';
+		$db->createCommand()
+			->update('vtiger_cron_task', ['sequence' => new yii\db\Expression($caseSequence)])
+			->execute();
 	}
 
 	public function hasCreatePermissions()

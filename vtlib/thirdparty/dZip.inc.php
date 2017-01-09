@@ -7,28 +7,28 @@
 class dZip
 {
 
-	var $filename;
-	var $overwrite;
-	var $zipSignature = "\x50\x4b\x03\x04"; // local file header signature
-	var $dirSignature = "\x50\x4b\x01\x02"; // central dir header signature
-	var $dirSignatureE = "\x50\x4b\x05\x06"; // end of central dir signature
-	var $files_count = 0;
-	var $fh;
+	public $filename;
+	public $overwrite;
+	public $zipSignature = "\x50\x4b\x03\x04"; // local file header signature
+	public $dirSignature = "\x50\x4b\x01\x02"; // central dir header signature
+	public $dirSignatureE = "\x50\x4b\x05\x06"; // end of central dir signature
+	public $files_count = 0;
+	public $fh;
 
-	Function dZip($filename, $overwrite = true)
+	public function __construct($filename, $overwrite = true)
 	{
 		$this->filename = $filename;
 		$this->overwrite = $overwrite;
 	}
 
-	Function addDir($dirname, $fileComments = '')
+	public function addDir($dirname, $fileComments = '')
 	{
 		if (substr($dirname, -1) != '/')
 			$dirname .= '/';
 		$this->addFile(false, $dirname, $fileComments);
 	}
 
-	Function addFile($filename, $cfilename, $fileComments = '', $data = false)
+	public function addFile($filename, $cfilename, $fileComments = '', $data = false)
 	{
 		if (!($fh = &$this->fh))
 			$fh = fopen($this->filename, $this->overwrite ? 'wb' : 'a+b');
@@ -53,7 +53,7 @@ class dZip
 			$details['comsize'] = $details['uncsize'];
 			$details['vneeded'] = 10;
 			$details['cmethod'] = 0;
-			$zdata = &$data;
+			$zdata = $data;
 		} else { // otherwise, compress it
 			$zdata = gzcompress($data);
 			$zdata = substr(substr($zdata, 0, strlen($zdata) - 4), 2); // fix crc bug (thanks to Eric Mueller)
@@ -101,22 +101,22 @@ class dZip
 		$this->files_count++;
 	}
 
-	Function setExtra($filename, $property, $value)
+	public function setExtra($filename, $property, $value)
 	{
 		$this->centraldirs[$filename][$property] = $value;
 	}
 
-	Function save($zipComments = '')
+	public function save($zipComments = '')
 	{
-		if (!($fh = &$this->fh))
+		if (!($fh = $this->fh))
 			$fh = fopen($this->filename, $this->overwrite ? 'w' : 'a+');
 
 		$cdrec = "";
 		foreach ($this->centraldirs as $filename => $cd) {
 			$cdrec .= $this->dirSignature;
-			$cdrec .= "\x0\x0";	  // version made by
+			$cdrec .= "\x0\x0";   // version made by
 			$cdrec .= pack('v', $cd['vneeded']); // version needed to extract
-			$cdrec .= "\x0\x0";	  // general bit flag
+			$cdrec .= "\x0\x0";   // general bit flag
 			$cdrec .= pack('v', $cd['cmethod']); // compression method
 			$cdrec .= pack('v', $cd['modtime']); // lastmod time
 			$cdrec .= pack('v', $cd['moddate']); // lastmod date
@@ -124,7 +124,7 @@ class dZip
 			$cdrec .= pack('V', $cd['comsize']); // compressed filesize
 			$cdrec .= pack('V', $cd['uncsize']); // uncompressed filesize
 			$cdrec .= pack('v', strlen($filename)); // file comment length
-			$cdrec .= pack('v', 0);	// extra field length
+			$cdrec .= pack('v', 0); // extra field length
 			$cdrec .= pack('v', strlen($cd['comments'])); // file comment length
 			$cdrec .= pack('v', 0); // disk number start
 			$cdrec .= pack('v', 0); // internal file attributes
@@ -151,7 +151,7 @@ class dZip
 	}
 
 	// Private
-	Function appendCentralDir($filename, $properties)
+	public function appendCentralDir($filename, $properties)
 	{
 		$this->centraldirs[$filename] = $properties;
 	}

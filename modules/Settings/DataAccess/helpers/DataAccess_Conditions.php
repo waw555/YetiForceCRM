@@ -25,11 +25,11 @@ class DataAccess_Conditions
 		$responeListOptional = array();
 		$responeListRequiredStatus = true;
 		$responeListOptionalStatus = false;
-		if ($recordModel){
+		if ($recordModel) {
 			$fieldNames = array_keys($form);
 			foreach ($condition as $lisConditions) {
 				foreach ($lisConditions as $cndKey => $singleCnd) {
-					if(!in_array($singleCnd['fieldname'], $fieldNames)){
+					if (!in_array($singleCnd['fieldname'], $fieldNames)) {
 						$form = Vtiger_Record_Model::getInstanceById($recordModel->getId())->getData();
 						break;
 					}
@@ -49,19 +49,21 @@ class DataAccess_Conditions
 				}
 			}
 		}
-		for ($i = 0; $i < count($responeListRequired); $i++) {
-			if (TRUE != $responeListRequired[$i]) {
+		$countResponeListRequired = count($responeListRequired);
+		for ($i = 0; $i < $countResponeListRequired; $i++) {
+			if (true != $responeListRequired[$i]) {
 				$responeListRequiredStatus = false;
 			}
 		}
 		if (count($responeListOptional)) {
-			for ($i = 0; $i < count($responeListOptional); $i++) {
-				if (TRUE == $responeListOptional[$i]) {
+			$countResponeListOptional = count($responeListOptional);
+			for ($i = 0; $i < $countResponeListOptional; $i++) {
+				if (true == $responeListOptional[$i]) {
 					$responeListOptionalStatus = true;
 				}
 			}
 		} else {
-			$responeListOptionalStatus = TRUE;
+			$responeListOptionalStatus = true;
 		}
 		if ($responeListRequiredStatus && $responeListOptionalStatus) {
 			return array('test' => true, 'ID' => $ID, 'condition' => $condition[$ID][0]);
@@ -72,41 +74,54 @@ class DataAccess_Conditions
 
 	private function getListConditions($module)
 	{
-		$db = PearDatabase::getInstance();
-		$sql = "SELECT dataaccessid, fieldname, comparator, field_type, val, required "
-			. " FROM " . self::$tab
-			. " LEFT JOIN " . self::$tab_cnd . " ON " . self::$tab_cnd . ".dataaccessid = dataaccessid"
-			. " WHERE module_name = ?";
-		$result = $db->pquery($sql, array($module), TRUE);
-		$output = array();
-		for ($i = 0; $i < $db->num_rows($result); $i++) {
-			$id = $db->query_result_raw($result, $i, 'dataaccessid');
-			$output[$id][$i]['fieldname'] = $db->query_result_raw($result, $i, 'fieldname');
-			$output[$id][$i]['comparator'] = $db->query_result_raw($result, $i, 'comparator');
-			$output[$id][$i]['field_type'] = $db->query_result_raw($result, $i, 'field_type');
-			$output[$id][$i]['val'] = $db->query_result_raw($result, $i, 'val');
-			$output[$id][$i]['cnd_required'] = $db->query_result_raw($result, $i, 'required');
+		$dataReader = (new \App\Db\Query())->select([
+					self::$tab . '.dataaccessid',
+					'fieldname',
+					'comparator',
+					'field_type',
+					'val',
+					'required'
+				])->from(self::$tab)
+				->leftJoin(self::$tab_cnd, self::$tab_cnd . '.dataaccessid = ' . self::$tab . '.dataaccessid')
+				->where(['module_name' => $module])
+				->createCommand()->query();
+		$output = [];
+		$i = 0;
+		while ($row = $dataReader->read()) {
+			$id = $row['dataaccessid'];
+			$output[$id][$i]['fieldname'] = $row['fieldname'];
+			$output[$id][$i]['comparator'] = $row['comparator'];
+			$output[$id][$i]['field_type'] = $row['field_type'];
+			$output[$id][$i]['val'] = $row['val'];
+			$output[$id][$i]['cnd_required'] = $row['required'];
+			$i++;
 		}
 		return $output;
 	}
 
 	private function getListConditionsById($ID)
 	{
-		$db = PearDatabase::getInstance();
-		
-		$sql = sprintf('SELECT %s.dataaccessid, fieldname, comparator, field_type, val, required 
-			 FROM  %s
-			 LEFT JOIN %s ON %s.dataaccessid = %s.dataaccessid
-			 WHERE %s.dataaccessid = ?', self::$tab, self::$tab, self::$tab_cnd, self::$tab_cnd, self::$tab, self::$tab);
-		$result = $db->pquery($sql, [$ID], TRUE);
-		$output = array();
-		for ($i = 0; $i < $db->num_rows($result); $i++) {
-			$id = $db->query_result_raw($result, $i, 'dataaccessid');
-			$output[$id][$i]['fieldname'] = $db->query_result_raw($result, $i, 'fieldname');
-			$output[$id][$i]['comparator'] = $db->query_result_raw($result, $i, 'comparator');
-			$output[$id][$i]['field_type'] = $db->query_result_raw($result, $i, 'field_type');
-			$output[$id][$i]['val'] = $db->query_result_raw($result, $i, 'val');
-			$output[$id][$i]['cnd_required'] = $db->query_result_raw($result, $i, 'required');
+		$dataReader = (new \App\Db\Query())->select([
+					self::$tab . '.dataaccessid',
+					'fieldname',
+					'comparator',
+					'field_type',
+					'val',
+					'required'
+				])->from(self::$tab)
+				->leftJoin(self::$tab_cnd, self::$tab_cnd . '.dataaccessid = ' . self::$tab . '.dataaccessid')
+				->where([self::$tab . '.dataaccessid' => $ID])
+				->createCommand()->query();
+		$output = [];
+		$i = 0;
+		while ($row = $dataReader->read()) {
+			$id = $row['dataaccessid'];
+			$output[$id][$i]['fieldname'] = $row['fieldname'];
+			$output[$id][$i]['comparator'] = $row['comparator'];
+			$output[$id][$i]['field_type'] = $row['field_type'];
+			$output[$id][$i]['val'] = $row['val'];
+			$output[$id][$i]['cnd_required'] = $row['required'];
+			$i++;
 		}
 		return $output;
 	}
@@ -118,7 +133,8 @@ class DataAccess_Conditions
 		$class = new ReflectionClass('DataAccess_ConditionsTest');
 		$methodList = $class->getMethods(ReflectionMethod::IS_STATIC);
 		$exist = false;
-		for ($i = 0; $i < count($methodList); $i++) {
+		$countMethodList = count($methodList);
+		for ($i = 0; $i < $countMethodList; $i++) {
 			if ($methodList[$i]->name == $methodName) {
 				$exist = true;
 			}
@@ -132,7 +148,8 @@ class DataAccess_Conditions
 	private function createFunctionName($condition)
 	{
 		$tabConditionName = explode(' ', $condition);
-		for ($i = 0; $i < count($tabConditionName); $i++) {
+		$countTabConditionName = count($tabConditionName);
+		for ($i = 0; $i < $countTabConditionName; $i++) {
 			if (0 != $i) {
 				$tabConditionName[$i] = ucfirst($tabConditionName[$i]);
 			}
@@ -140,76 +157,17 @@ class DataAccess_Conditions
 		return implode('', $tabConditionName);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/* function getListValidDoc($moduleName, $record) {
-	  $listDocAndConditions = $this->getListConditions($moduleName);
-	  $output = array();
-
-	  foreach ($listDocAndConditions as $key => $lisConditions) {
-	  $responeListRequired = array();
-	  $responeListOptional = array();
-
-	  foreach ($lisConditions as $cndKey => $singleCnd) {
-
-	  if ('1' == $singleCnd['cnd_required']) {
-	  if (NULL != $singleCnd['comparator']) {
-	  $responeListRequired[] = $this->checkSingleCondition($record, $singleCnd);
-	  }
-	  } else {
-	  if (NULL != $singleCnd['comparator']) {
-	  $responeListOptional[] = $this->checkSingleCondition($record, $singleCnd);
-	  }
-	  }
-	  }
-
-	  $responeListRequiredStatus = true;
-
-	  for ($i = 0; $i < count($responeListRequired); $i++) {
-	  if (TRUE != $responeListRequired[$i]) {
-	  $responeListRequiredStatus = false;
-	  }
-	  }
-
-	  $responeListOptionalStatus = false;
-
-	  if (count($responeListOptional)) {
-	  for ($i = 0; $i < count($responeListOptional); $i++) {
-	  if (TRUE == $responeListOptional[$i]) {
-	  $responeListOptionalStatus = true;
-	  }
-	  }
-	  } else {
-	  $responeListOptionalStatus = TRUE;
-	  }
-
-	  if ($responeListRequiredStatus && $responeListOptionalStatus) {
-	  $singleDocInfo = array_shift(array_values($listDocAndConditions[$key]));
-
-	  $folderModel = Documents_Folder_Model::getInstanceById($singleDocInfo['doc_folder']);
-	  $singleDocInfo['folder'] = $folderModel->getName();
-	  $output[] = $singleDocInfo;
-	  }
-	  }
-
-	  return $output;
-	  } */
-
 	public function docIsAttachet($record, $folder, $docName)
 	{
-		$db = PearDatabase::getInstance();
-
-		$getListDocumentRelSql = "SELECT * FROM vtiger_senotesrel WHERE crmid = ?";
-		$getListDocumentRelResult = $db->pquery($getListDocumentRelSql, array($record), TRUE);
-
-		for ($i = 0; $i < $db->num_rows($getListDocumentRelResult); $i++) {
-			$ID = $db->query_result($getListDocumentRelResult, $i, 'notesid');
-
+		$dataReader = (new \App\Db\Query())->select('notesid')
+				->from('vtiger_senotesrel')
+				->where(['crmid' => $record])
+				->createCommand()->query();
+		while ($ID = $dataReader->readColumn(0)) {
 			if (isRecordExists($ID)) {
 				$documentModel = Vtiger_Record_Model::getInstanceById($ID);
-
 				if ($docName == $documentModel->get('notes_title') && $folder == $documentModel->get('folderid')) {
-					return TRUE;
+					return true;
 				}
 			}
 		}
@@ -219,23 +177,18 @@ class DataAccess_Conditions
 
 	public function docStatus($record, $folder, $docName)
 	{
-		$db = PearDatabase::getInstance();
-
-		$getListDocumentRelSql = "SELECT * FROM vtiger_senotesrel WHERE crmid = ?";
-		$getListDocumentRelResult = $db->pquery($getListDocumentRelSql, array($record), TRUE);
-
-		for ($i = 0; $i < $db->num_rows($getListDocumentRelResult); $i++) {
-			$ID = $db->query_result($getListDocumentRelResult, $i, 'notesid');
-
+		$dataReader = (new \App\Db\Query())->select('notesid')
+				->from('vtiger_senotesrel')
+				->where(['crmid' => $record])
+				->createCommand()->query();
+		while ($ID = $dataReader->readColumn(0)) {
 			if (isRecordExists($ID)) {
 				$documentModel = Vtiger_Record_Model::getInstanceById($ID);
-
 				if ($docName == $documentModel->get('notes_title') && $folder == $documentModel->get('folderid')) {
 					return $documentModel->get('ossdc_status');
 				}
 			}
 		}
-
 		return false;
 	}
 }

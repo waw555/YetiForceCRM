@@ -22,7 +22,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Name of this record instance
-	 * @return <String> Name
+	 * @return string Name
 	 */
 	public function getName()
 	{
@@ -51,7 +51,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Detail view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getDetailViewUrl()
 	{
@@ -61,7 +61,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Edit view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getEditViewUrl()
 	{
@@ -71,7 +71,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Delete url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getDeleteUrl()
 	{
@@ -81,7 +81,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Show form url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getShowFormUrl()
 	{
@@ -187,7 +187,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 						$hiddenStatus = $fieldData['hidden'];
 						$fieldValue = trim($fieldData['defaultvalue']);
 						$fieldType = $fieldModel->getFieldDataType();
-						if (($mandatoryStatus == 1) and ( $hiddenStatus == 1) and ( $fieldValue == "") and ( $fieldType != "boolean")) {
+						if (($mandatoryStatus == 1) && ( $hiddenStatus == 1) && ( $fieldValue == "") && ( $fieldType != "boolean")) {
 							$fieldData['hidden'] = 0;
 						}
 						if (($fieldType == 'reference') && $mode != 'showForm') {
@@ -215,7 +215,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get List of fields
-	 * @param <String> $targetModule
+	 * @param string $targetModule
 	 * @return <Array> list of Field models <Settings_Webforms_Field_Model>
 	 */
 	public function getAllFieldsList($targetModule = false)
@@ -248,7 +248,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function generate public id for this record instance for first time only
-	 * @return <String> id
+	 * @return string id
 	 */
 	public function generatePublicId()
 	{
@@ -265,7 +265,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to set db insert value value for checkbox
-	 * @param <string> $fieldName
+	 * @param string $fieldName
 	 */
 	public function setCheckBoxValue($fieldName)
 	{
@@ -311,7 +311,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 		$selectedFieldsData = $this->get('selectedFieldsData');
 		$sourceModuleModel = Vtiger_Module_Model::getInstance($this->get('targetmodule'));
 
-		$fieldInsertQuery = "INSERT INTO vtiger_webforms_field(webformid, fieldname, neutralizedfield, defaultvalue, required, sequence, hidden) VALUES(?, ?, ?, ?, ?, ?, ?)";
+		$fieldInsertQuery = "INSERT INTO vtiger_webforms_field(webformid, fieldname, fieldid, neutralizedfield, defaultvalue, required, sequence, hidden) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 		foreach ($selectedFieldsData as $fieldName => $fieldDetails) {
 			$params = array($this->getId());
 			$neutralizedField = $fieldName;
@@ -355,13 +355,13 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 			}
 
 			if ($dataType === 'currency') {
-				$decimalSeperator = $currentUser->get('currency_decimal_separator');
-				$groupSeperator = $currentUser->get('currency_grouping_separator');
-				$fieldDefaultValue = str_replace($decimalSeperator, '.', $fieldDefaultValue);
-				$fieldDefaultValue = str_replace($groupSeperator, '', $fieldDefaultValue);
+				$decimalSeparator = $currentUser->get('currency_decimal_separator');
+				$groupSeparator = $currentUser->get('currency_grouping_separator');
+				$fieldDefaultValue = str_replace($decimalSeparator, '.', $fieldDefaultValue);
+				$fieldDefaultValue = str_replace($groupSeparator, '', $fieldDefaultValue);
 			}
 
-			array_push($params, $fieldName, $neutralizedField, $fieldDefaultValue, $fieldDetails['required'], $fieldDetails['sequence'], $fieldDetails['hidden']);
+			array_push($params, $fieldName, $fieldModel->getId(), $neutralizedField, $fieldDefaultValue, $fieldDetails['required'], $fieldDetails['sequence'], $fieldDetails['hidden']);
 			$db->pquery($fieldInsertQuery, $params);
 		}
 	}
@@ -379,7 +379,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 		$record = $this->getId();
 		if ($record) {
-			$query .= " AND id != ?";
+			$query .= " && id != ?";
 			array_push($params, $record);
 		}
 
@@ -393,7 +393,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Function to get record instance by using id and moduleName
 	 * @param <Integer> $recordId
-	 * @param <String> $qualifiedModuleName
+	 * @param string $qualifiedModuleName
 	 * @return <Settings_Webforms_Record_Model> RecordModel
 	 */
 	static public function getInstanceById($recordId, $qualifiedModuleName)
@@ -414,7 +414,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get clean record instance by using moduleName
-	 * @param <String> $moduleName
+	 * @param string $moduleName
 	 * @return <Settings_Vtiger_Module_Model>
 	 */
 	static public function getCleanInstance($moduleName)
@@ -426,7 +426,7 @@ class Settings_Webforms_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to check whether field is custom or not
-	 * @param <String> $fieldName
+	 * @param string $fieldName
 	 * @return <boolean> true/false
 	 */
 	static function isCustomField($fieldName)

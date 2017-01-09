@@ -6,58 +6,64 @@
  * @license licenses/License.html
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-class OSSMailScanner_PrefixScannerAction_Model
+abstract class OSSMailScanner_PrefixScannerAction_Model
 {
 
-	public function process($mail, $moduleName, $tableName, $tableColumn)
+	public $prefix, $moduleName, $mail, $tableName, $tableColumn;
+
+	public abstract function process(OSSMail_Mail_Model $mail);
+
+	public function findAndBind()
 	{
 		$db = PearDatabase::getInstance();
-		$mailId = $mail->getMailCrmId();
+		$mailId = $this->mail->getMailCrmId();
 		if (!$mailId) {
 			return 0;
 		}
 		$returnIds = [];
 		$result = $db->pquery('SELECT crmid FROM vtiger_ossmailview_relation WHERE ossmailviewid = ?;', [$mailId]);
 		while ($crmid = $db->getSingleValue($result)) {
-			$type = vtlib\Functions::getCRMRecordType($crmid);
-			if ($type == $moduleName) {
+			$type = \App\Record::getType($crmid);
+			if ($type == $this->moduleName) {
 				$returnIds[] = $crmid;
 			}
 		}
-		if (count($returnIds) > 0) {
+		if (!empty($returnIds)) {
 			return $returnIds;
 		}
-
-		$prefix = includes\fields\Email::findCrmidByPrefix($mail->get('subject'), $moduleName);
-		if (!$prefix) {
+		$this->prefix = \App\Fields\Email::findRecordNumber($this->mail->get('subject'), $this->moduleName);
+		if (!$this->prefix) {
 			return false;
 		}
 
-		$name = 'MSFindPrevix';
-		$cache = Vtiger_Cache::get($name, $prefix);
-		if ($cache !== false) {
-			$status = OSSMailView_Relation_Model::addRelation($mailId, $cache, $mail->get('udate_formated'));
-			if ($status) {
-				$returnIds[] = $cache;
-			}
-			return $returnIds;
+		return $this->add();
+	}
+
+	protected function add()
+	{
+		$returnIds = [];
+		$crmId = false;
+		if (\App\Cache::has('getRecordByPrefix', $this->prefix)) {
+			$crmId = \App\Cache::get('getRecordByPrefix', $this->prefix);
 		} else {
-			require_once("modules/$moduleName/$moduleName.php");
-			$moduleObject = new $moduleName();
-			$tableIndex = $moduleObject->tab_name_index[$tableName];
-
-			$query = sprintf('SELECT %s FROM %s INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = %s.%s WHERE vtiger_crmentity.deleted = 0  AND %s = ? ', $tableIndex, $tableName, $tableName, $tableIndex, $tableColumn);
-			$result = $db->pquery($query, [$prefix]);
-
-			if ($db->getRowCount($result) > 0) {
-				$crmid = $db->getSingleValue($result);
-
-				$status = OSSMailView_Relation_Model::addRelation($mailId, $crmid, $mail->get('udate_formated'));
-				if ($status) {
-					$returnIds[] = $crmid;
-				}
+			$moduleObject = CRMEntity::getInstance($this->moduleName);
+			$tableIndex = $moduleObject->tab_name_index[$this->tableName];
+			$crmId = (new \App\Db\Query())
+				->select([$tableIndex])
+				->from($this->tableName)
+				->innerJoin('vtiger_crmentity', "$this->tableName.$tableIndex = vtiger_crmentity.crmid")
+				->where(['vtiger_crmentity.deleted' => 0, $this->tableName . '.' . $this->tableColumn => $this->prefix])
+				->one();
+			if ($crmId) {
+				\App\Cache::save('getRecordByPrefix', $this->prefix, $crmId, \App\Cache::LONG);
 			}
-			return $returnIds;
 		}
+		if ($crmId) {
+			$status = (new OSSMailView_Relation_Model())->addRelation($this->mail->getMailCrmId(), $crmId, $this->mail->get('udate_formated'));
+			if ($status) {
+				$returnIds[] = $crmId;
+			}
+		}
+		return $returnIds;
 	}
 }

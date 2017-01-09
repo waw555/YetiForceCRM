@@ -634,7 +634,6 @@ class Restler
                 $format = $this->format_map[$extension];
                 $format = is_string($format) ? new $format : $format;
                 $format->setExtension($extension);
-                //echo "Extension $extension";
                 return $format;
             }
         }
@@ -659,7 +658,6 @@ class Restler
                     $format = $this->format_map[$accept];
                     $format = is_string($format) ? new $format : $format;
                     $format->setMIME($accept);
-                    //echo "MIME $accept";
                     // Tell cache content is based on Accept header
                     header("Vary: Accept"); 
                     return $format;
@@ -731,7 +729,6 @@ class Restler
         $params += $this->request_data;
         $lc = strtolower($this->url);
         foreach ($urls as $url => $call) {
-            //echo PHP_EOL.$url.' = '.$this->url.PHP_EOL;
             $call = (object) $call;
             if (strstr($url, ':')) {
                 $regex = preg_replace('/\\\:([^\/]+)/', '(?P<$1>[^/]+)',
@@ -752,11 +749,8 @@ class Restler
             }
         }
         if ($found) {
-            //echo PHP_EOL."Found $url ";
-            //print_r($call);
             $p = $call->defaults;
             foreach ($call->arguments as $key => $value) {
-                //echo "$key => $value \n";
                 if (isset($params[$key])) {
                     $p[$value] = $params[$key];
                 }
@@ -968,13 +962,13 @@ class DefaultResponse implements iRespond
 {
 
 
-    function __formatResponse($result)
+    public function __formatResponse($result)
     {
         return $result;
     }
 
 
-    function __formatError($statusCode, $message)
+    public function __formatError($statusCode, $message)
     {
         return array(
             'error' => array(
@@ -1330,7 +1324,7 @@ class DocParser
     private $params = array();
 
 
-    function parse($doc = '')
+    public function parse($doc = '')
     {
         if ($doc == '') {
             return $this->params;

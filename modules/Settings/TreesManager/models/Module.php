@@ -12,11 +12,11 @@
 class Settings_TreesManager_Module_Model extends Settings_Vtiger_Module_Model
 {
 
-	var $baseTable = 'vtiger_trees_templates';
-	var $baseIndex = 'id';
-	var $nameFields = array('name');
-	var $listFields = array('name' => 'LBL_NAME', 'module' => 'LBL_MODULE');
-	var $name = 'TreesManager';
+	public $baseTable = 'vtiger_trees_templates';
+	public $baseIndex = 'id';
+	public $nameFields = array('name');
+	public $listFields = array('name' => 'LBL_NAME', 'module' => 'LBL_MODULE');
+	public $name = 'TreesManager';
 
 	public static function getSupportedModules()
 	{
@@ -26,7 +26,7 @@ class Settings_TreesManager_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get Create view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public static function getCreateRecordUrl()
 	{
@@ -35,7 +35,7 @@ class Settings_TreesManager_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get List view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getListViewUrl()
 	{

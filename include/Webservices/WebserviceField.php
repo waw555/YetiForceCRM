@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * **************************************************************************** */
 require_once 'include/runtime/Cache.php';
 
@@ -35,7 +36,6 @@ class WebserviceField
 	 *
 	 * @var PearDatabase
 	 */
-	private $pearDB;
 	private $typeOfData;
 	private $fieldDataType;
 	private $dataFromMeta;
@@ -47,7 +47,7 @@ class WebserviceField
 	private $genericUIType = 10;
 	private $readOnly = 0;
 
-	private function __construct($adb, $row)
+	public function __construct($row)
 	{
 		$this->uitype = $row['uitype'];
 		$this->blockId = $row['block'];
@@ -69,7 +69,6 @@ class WebserviceField
 		$this->fieldType = $typeOfData[0];
 		$this->tabid = $row['tabid'];
 		$this->fieldId = $row['fieldid'];
-		$this->pearDB = $adb;
 		$this->fieldDataType = null;
 		$this->dataFromMeta = false;
 		$this->defaultValuePresent = false;
@@ -83,14 +82,9 @@ class WebserviceField
 		}
 	}
 
-	public static function fromQueryResult($adb, $result, $rowNumber)
-	{
-		return new WebserviceField($adb, $adb->query_result_rowdata($result, $rowNumber));
-	}
-
 	public static function fromArray($adb, $row)
 	{
-		return new WebserviceField($adb, $row);
+		return new WebserviceField($row);
 	}
 
 	public function getTableName()
@@ -192,7 +186,7 @@ class WebserviceField
 
 	public function getFieldParams()
 	{
-		return \includes\utils\Json::decode($this->fieldparams);
+		return \App\Json::decode($this->fieldparams);
 	}
 
 	public function isReadOnly()
@@ -230,7 +224,7 @@ class WebserviceField
 		if (isset(WebserviceField::$tableMeta[$this->getTableName()])) {
 			$tableFields = WebserviceField::$tableMeta[$this->getTableName()];
 		} else {
-			$dbMetaColumns = $this->pearDB->getColumnsMeta($this->getTableName());
+			$dbMetaColumns = PearDatabase::getInstance()->getColumnsMeta($this->getTableName());
 			$tableFields = [];
 			foreach ($dbMetaColumns as $key => $dbField) {
 				$tableFields[$dbField->name] = $dbField;
@@ -262,12 +256,6 @@ class WebserviceField
 			if ($fieldDataType === null) {
 				$fieldDataType = $this->getFieldTypeFromTypeOfData();
 			}
-			if ($fieldDataType == 'date' || $fieldDataType == 'datetime' || $fieldDataType == 'time') {
-				$tableFieldDataType = $this->getFieldTypeFromTable();
-				if ($tableFieldDataType == 'datetime') {
-					$fieldDataType = $tableFieldDataType;
-				}
-			}
 			$this->fieldDataType = $fieldDataType;
 		}
 		return $this->fieldDataType;
@@ -276,9 +264,8 @@ class WebserviceField
 	public function getReferenceList()
 	{
 		if ($this->referenceList === null) {
-			$referenceList = Vtiger_Cache::get('getReferenceList', $this->getFieldId());
-			if ($referenceList !== false) {
-				return $referenceList;
+			if (\App\Cache::has('getReferenceList', $this->getFieldId())) {
+				return \App\Cache::get('getReferenceList', $this->getFieldId());
 			}
 			if (!isset(WebserviceField::$fieldTypeMapping[$this->getUIType()])) {
 				$this->getFieldTypeFromUIType();
@@ -289,25 +276,30 @@ class WebserviceField
 
 			$accessibleTypes = $types['types'];
 			//If it is non admin user or the edit and view is there for profile then users module will be accessible
-			if (!is_admin($current_user) && !in_array("Users", $accessibleTypes)) {
+			if (!\vtlib\Functions::userIsAdministrator($current_user) && !in_array("Users", $accessibleTypes)) {
 				array_push($accessibleTypes, 'Users');
 			}
 
 			$referenceTypes = [];
 			if (!in_array($this->getUIType(), [66, 67, 68])) {
 				if ($this->getUIType() != $this->genericUIType) {
-					$sql = "select vtiger_ws_referencetype.`type` from vtiger_ws_referencetype INNER JOIN vtiger_tab ON vtiger_tab.`name` = vtiger_ws_referencetype.`type` where fieldtypeid=? AND vtiger_tab.`presence` NOT IN (?)";
-					$params = array($fieldTypeData['fieldtypeid'], 1);
+					$query = (new \App\Db\Query())->select('vtiger_ws_referencetype.type')
+						->from('vtiger_ws_referencetype')
+						->innerJoin('vtiger_tab', 'vtiger_tab.name = vtiger_ws_referencetype.type')
+						->where(['fieldtypeid' => $fieldTypeData['fieldtypeid']])
+						->andWhere(['not in', 'vtiger_tab.presence', [1]]);
 				} else {
-					$sql = 'select relmodule as type from vtiger_fieldmodulerel INNER JOIN vtiger_tab ON vtiger_tab.`name` = vtiger_fieldmodulerel.`relmodule` WHERE fieldid=? AND vtiger_tab.`presence` NOT IN (?) ORDER BY sequence ASC';
-					$params = array($this->getFieldId(), 1);
+					$query = (new \App\Db\Query())->select('relmodule as type')
+						->from('vtiger_fieldmodulerel')
+						->innerJoin('vtiger_tab', 'vtiger_tab.name = vtiger_fieldmodulerel.relmodule')
+						->where(['fieldid' => $this->getFieldId()])
+						->andWhere(['not in', 'vtiger_tab.presence', [1]])
+						->orderBy(['sequence' => SORT_ASC]);
 				}
-				$result = $this->pearDB->pquery($sql, $params);
-				$numRows = $this->pearDB->num_rows($result);
-				for ($i = 0; $i < $numRows; ++$i) {
-					$referenceType = $this->pearDB->query_result($result, $i, "type");
-					if (in_array($referenceType, $accessibleTypes))
-						array_push($referenceTypes, $referenceType);
+				$dataReader = $query->createCommand()->query();
+				while ($row = $dataReader->read()) {
+					if (in_array($row['type'], $accessibleTypes))
+						array_push($referenceTypes, $row['type']);
 				}
 			} else {
 				$fieldModel = Vtiger_Field_Model::getInstanceFromFieldId($this->getFieldId());
@@ -321,7 +313,7 @@ class WebserviceField
 				$referenceTypesSorted[$keySort] = $reference;
 			}
 			ksort($referenceTypesSorted);
-			Vtiger_Cache::set('getReferenceList', $this->getFieldId(), $referenceTypesSorted);
+			\App\Cache::save('getReferenceList', $this->getFieldId(), $referenceTypesSorted);
 			$this->referenceList = $referenceTypesSorted;
 			return $referenceTypesSorted;
 		}
@@ -361,8 +353,9 @@ class WebserviceField
 
 		// Cache all the information for futher re-use
 		if (empty(self::$fieldTypeMapping)) {
-			$result = $this->pearDB->pquery('select * from vtiger_ws_fieldtype', []);
-			while ($resultrow = $this->pearDB->fetch_array($result)) {
+			$db = PearDatabase::getInstance();
+			$result = $db->pquery('select * from vtiger_ws_fieldtype', []);
+			while ($resultrow = $db->fetch_array($result)) {
 				self::$fieldTypeMapping[$resultrow['uitype']] = $resultrow;
 			}
 		}
@@ -379,7 +372,7 @@ class WebserviceField
 		}
 	}
 
-	function getPicklistDetails()
+	public function getPicklistDetails()
 	{
 		$cache = Vtiger_Cache::getInstance();
 		if ($cache->getPicklistDetails($this->getTabId(), $this->getFieldName())) {
@@ -406,40 +399,40 @@ class WebserviceField
 		}
 	}
 
-	function getPickListOptions()
+	public function getPickListOptions()
 	{
 		$fieldName = $this->getFieldName();
-
+		$db = PearDatabase::getInstance();
 		$default_charset = VTWS_PreserveGlobal::getGlobal('default_charset');
 		$options = [];
 		$sql = "select * from vtiger_picklist where name=?";
-		$result = $this->pearDB->pquery($sql, array($fieldName));
-		$numRows = $this->pearDB->num_rows($result);
+		$result = $db->pquery($sql, array($fieldName));
+		$numRows = $db->num_rows($result);
 		if ($numRows == 0) {
 			$sql = "select * from vtiger_$fieldName";
-			$result = $this->pearDB->pquery($sql, []);
-			$numRows = $this->pearDB->num_rows($result);
+			$result = $db->pquery($sql, []);
+			$numRows = $db->num_rows($result);
 			for ($i = 0; $i < $numRows; ++$i) {
 				$elem = [];
-				$picklistValue = $this->pearDB->query_result($result, $i, $fieldName);
+				$picklistValue = $db->query_result($result, $i, $fieldName);
 				$picklistValue = decode_html($picklistValue);
-				$moduleName = getTabModuleName($this->getTabId());
+				$moduleName = \App\Module::getModuleName($this->getTabId());
 				if ($moduleName == 'Events')
 					$moduleName = 'Calendar';
-				$elem["label"] = getTranslatedString($picklistValue, $moduleName);
+				$elem["label"] = \App\Language::translate($picklistValue, $moduleName);
 				$elem["value"] = $picklistValue;
 				array_push($options, $elem);
 			}
 		}else {
 			$user = VTWS_PreserveGlobal::getGlobal('current_user');
-			$details = getPickListValues($fieldName, $user->roleid);
+			$details = \App\Fields\Picklist::getRoleBasedPicklistValues($fieldName, $user->roleid);
 			for ($i = 0; $i < sizeof($details); ++$i) {
 				$elem = [];
 				$picklistValue = decode_html($details[$i]);
-				$moduleName = getTabModuleName($this->getTabId());
+				$moduleName = \App\Module::getModuleName($this->getTabId());
 				if ($moduleName == 'Events')
 					$moduleName = 'Calendar';
-				$elem["label"] = getTranslatedString($picklistValue, $moduleName);
+				$elem["label"] = \App\Language::translate($picklistValue, $moduleName);
 				$elem["value"] = $picklistValue;
 				array_push($options, $elem);
 			}
@@ -447,25 +440,26 @@ class WebserviceField
 		return $options;
 	}
 
-	function getPresence()
+	public function getPresence()
 	{
 		return $this->presence;
 	}
 
 	private static $treeDetails = [];
 
-	function getTreeDetails()
+	public function getTreeDetails()
 	{
 		if (count(self::$treeDetails) > 0) {
 			return self::$treeDetails;
 		}
-		$result = $this->pearDB->pquery('SELECT module FROM vtiger_trees_templates WHERE templateid = ?', [$this->getFieldParams()]);
-		$module = $this->pearDB->getSingleValue($result);
-		$moduleName = getTabModuleName($module);
+		$db = PearDatabase::getInstance();
+		$result = $db->pquery('SELECT module FROM vtiger_trees_templates WHERE templateid = ?', [$this->getFieldParams()]);
+		$module = $db->getSingleValue($result);
+		$moduleName = \App\Module::getModuleName($module);
 
-		$result = $this->pearDB->pquery('SELECT tree,label FROM vtiger_trees_templates_data WHERE templateid = ?', [$this->getFieldParams()]);
-		while ($row = $this->pearDB->fetch_array($result)) {
-			self::$treeDetails[$row['tree']] = getTranslatedString($row['label'], $moduleName);
+		$result = $db->pquery('SELECT tree,label FROM vtiger_trees_templates_data WHERE templateid = ?', [$this->getFieldParams()]);
+		while ($row = $db->fetch_array($result)) {
+			self::$treeDetails[$row['tree']] = \App\Language::translate($row['label'], $moduleName);
 		}
 		return self::$treeDetails;
 	}

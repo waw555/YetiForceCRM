@@ -9,7 +9,7 @@
 class Settings_LayoutEditor_CreateInventoryFields_View extends Settings_Vtiger_IndexAjax_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('step1');
@@ -25,7 +25,7 @@ class Settings_LayoutEditor_CreateInventoryFields_View extends Settings_Vtiger_I
 		$models = $instance->getAllFields();
 
 		$fieldsName = [];
-		foreach ($instance->getFields(1,[],'Settings') AS $fields) {
+		foreach ($instance->getFields(1, [], 'Settings') AS $fields) {
 			$fieldsName = array_merge(array_keys($fields), $fieldsName);
 		}
 		$viewer = $this->getViewer($request);
@@ -54,7 +54,7 @@ class Settings_LayoutEditor_CreateInventoryFields_View extends Settings_Vtiger_I
 		$viewer->assign('INVENTORY_MODEL', $instance);
 		$viewer->assign('FIELD_INSTANCE', $fieldInstance);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
-		$viewer->assign('MODULE', $qualifiedModuleName);
+		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('ID', $request->get('id'));
 		$viewer->view('CreateInventoryFieldsStep2.tpl', $qualifiedModuleName);
 	}

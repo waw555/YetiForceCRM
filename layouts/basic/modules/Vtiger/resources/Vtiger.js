@@ -92,21 +92,15 @@ var Vtiger_Index_Js = {
 				window.open(url, '_blank', popupParams + ',resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=no,status=nomenubar=no');
 				return;
 			}
-			var actionParams = {
-				type: "POST",
-				url: url,
-				dataType: "html",
-				data: postData
-			};
-			AppConnector.request(actionParams).then(function (appData) {
-				var win = window.open('about:blank', '_blank', popupParams + ',resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=no,status=nomenubar=no');
-				with (win.document)
-				{
-					open();
-					write(appData);
-					close();
-				}
+			var form = $("<form/>", {action: 'index.php'});
+			var parts = url.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
+				form.append($("<input>", {name: key, value: value}));
 			});
+			for (var i in postData) {
+				form.append($("<input>", {name: i, value: JSON.stringify(postData[i])}));
+			}
+			$('body').append(form);
+			form.submit();
 		} else {
 			window.location.href = url;
 		}
@@ -217,8 +211,7 @@ var Vtiger_Index_Js = {
 	 */
 
 	showComposeEmailPopup: function (params, cb) {
-		var currentModule = "Emails";
-		Vtiger_Helper_Js.checkServerConfig(currentModule).then(function (data) {
+		Vtiger_Index_Js.checkMailConfig().then(function (data) {
 			if (data == true) {
 				var css = jQuery.extend({'text-align': 'left'}, css);
 				AppConnector.request(params).then(
@@ -291,7 +284,7 @@ var Vtiger_Index_Js = {
 			async: false,
 			dataType: 'json',
 			data: {
-				module: 'Home',
+				module: 'Notification',
 				action: 'Notification',
 				mode: 'getNumberOfNotifications'
 			}
@@ -314,7 +307,7 @@ var Vtiger_Index_Js = {
 	markNotifications: function (id) {
 		var thisInstance = this;
 		var params = {
-			module: 'Home',
+			module: 'Notification',
 			action: 'Notification',
 			mode: 'setMark',
 			ids: id
@@ -353,7 +346,7 @@ var Vtiger_Index_Js = {
 			return false;
 		}
 		var params = {
-			module: 'Home',
+			module: 'Notification',
 			action: 'Notification',
 			mode: 'setMark',
 			ids: ids
@@ -484,7 +477,7 @@ var Vtiger_Index_Js = {
 		var lastPopovers = [];
 		// Fetching reference fields often is not a good idea on a given page.
 		// The caching is done based on the URL so we can reuse.
-		var CACHE_ENABLED = true; // TODO - add cache timeout support.
+		var CACHE_ENABLED = true;
 
 		function prepareAndShowTooltipView() {
 			hideAllTooltipViews();
@@ -637,54 +630,47 @@ var Vtiger_Index_Js = {
 		});
 		return aDeferred.promise();
 	},
-	sendNotification: function () {
-		var modalWindowParams = {
-			url: 'index.php?module=Home&view=CreateNotificationModal',
-			id: 'CreateNotificationModal',
-			cb: function (container) {
-				var form, text, link, htmlLink;
-				text = container.find('#notificationMessage');
-				form = container.find('form');
-				container.find('#notificationTitle').val(app.getPageTitle());
-				link = $("<a/>", {
-					name: "link",
-					href: window.location.href,
-					text: app.vtranslate('JS_NOTIFICATION_LINK')
-				});
-				htmlLink = $('<div>').append(link.clone()).html();
-				text.val('<br/><hr/>' + htmlLink);
-				var ckEditorInstance = new Vtiger_CkEditor_Js();
-				ckEditorInstance.loadCkEditor(text);
-				container.find(".externalMail").click(function (e) {
-					if (form.validationEngine('validate')) {
-						var editor = CKEDITOR.instances.notificationMessage;
-						var text = $('<div>' + editor.getData() + '</div>');
-						text.find("a[href]").each(function (i, el) {
-							var href = $(this);
-							href.text(href.attr('href'));
-						});
-						var emails = [];
-						container.find("#notificationUsers option:selected").each(function (index) {
-							emails.push($(this).data('mail'))
-						});
-						$(this).attr('href', 'mailto:' + emails.join() + '?subject=' + encodeURIComponent(container.find("#notificationTitle").val()) + '&body=' + encodeURIComponent(text.text()))
-						app.hideModalWindow(container, 'CreateNotificationModal');
-					} else {
-						e.preventDefault();
-					}
-				});
-				container.find('[type="submit"]').click(function (e) {
-					var element = $(this);
-					form.find('[name="mode"]').val(element.data('mode'));
-				});
-				form.submit(function (e) {
-					if (form.validationEngine('validate')) {
-						app.hideModalWindow(container, 'CreateNotificationModal');
-					}
-				});
-			},
+	assignToOwner: function (element, userId) {
+		var aDeferred = jQuery.Deferred();
+		element = jQuery(element);
+		if (userId == undefined) {
+			userId = app.getMainParams('current_user_id');
 		}
-		app.showModalWindow(modalWindowParams);
+		var params = {
+			module: element.data('module'),
+			record: element.data('record'),
+			field: 'assigned_user_id',
+			value: userId
+		};
+		app.saveAjax('', null, params).then(function (e) {
+			app.hideModalWindow();
+			if (app.getViewName() === 'List') {
+				var listinstance = new Vtiger_List_Js();
+				listinstance.getListViewRecords();
+			}
+		})
+	},
+	sendNotification: function () {
+		Vtiger_Header_Js.getInstance().quickCreateModule('Notification');
+	},
+	checkMailConfig: function () {
+		var aDeferred = jQuery.Deferred();
+		AppConnector.request({
+			module: app.getModuleName(),
+			action: 'Mail',
+			mode: 'checkSmtp',
+		}).then(function (response) {
+			var state = false;
+			if (response.result) {
+				state = true;
+			} else {
+				state = false;
+			}
+			aDeferred.resolve(state);
+		}, function (data, err) {
+			aDeferred.resolve(false);
+		})
+		return aDeferred.promise();
 	},
 	loadPreSaveRecord: function (form) {
 		SaveResult = new SaveResult()

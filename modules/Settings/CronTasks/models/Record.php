@@ -27,7 +27,7 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get Name of this record
-	 * @return <String>
+	 * @return string
 	 */
 	public function getName()
 	{
@@ -89,7 +89,7 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Detect if the task was started by never finished.
 	 */
-	function hadTimedout()
+	public function hadTimedout()
 	{
 		if ($this->get('lastend') === 0 && $this->get('laststart') != 0)
 			return intval($this->get('lastend'));
@@ -98,7 +98,7 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Get the user datetimefeild
 	 */
-	function getLastEndDateTime()
+	public function getLastEndDateTime()
 	{
 		if ($this->get('lastend') != NULL) {
 			$lastScannedTime = Vtiger_Datetime_UIType::getDisplayDateTimeValue(date('Y-m-d H:i:s', $this->get('lastend')));
@@ -118,7 +118,7 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 	/**
 	 * Get Time taken to complete task
 	 */
-	function getTimeDiff()
+	public function getTimeDiff()
 	{
 		$lastStart = intval($this->get('laststart'));
 		$lastEnd = intval($this->get('lastend'));
@@ -128,8 +128,8 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 
 	/**
 	 * Function to get display value of every field from this record
-	 * @param <String> $fieldName
-	 * @return <String>
+	 * @param string $fieldName
+	 * @return string
 	 */
 	public function getDisplayValue($fieldName)
 	{
@@ -178,45 +178,45 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 	 */
 	public function save()
 	{
-		$db = PearDatabase::getInstance();
-
-		$updateQuery = "UPDATE vtiger_cron_task SET frequency = ?, status = ? WHERE id = ?";
-		$params = array($this->get('frequency'), $this->get('status'), $this->getId());
-		$db->pquery($updateQuery, $params);
+		\App\Db::getInstance()->createCommand()->update('vtiger_cron_task', ['frequency' => $this->get('frequency'), 'status' => $this->get('status')], ['id' => $this->getId()])
+			->execute();
 	}
 
 	/**
 	 * Function to get record instance by using id and moduleName
 	 * @param <Integer> $recordId
-	 * @param <String> $qualifiedModuleName
+	 * @param string $qualifiedModuleName
 	 * @return <Settings_CronTasks_Record_Model> RecordModel
 	 */
 	static public function getInstanceById($recordId, $qualifiedModuleName)
 	{
-		$db = PearDatabase::getInstance();
-
-		$result = $db->pquery("SELECT * FROM vtiger_cron_task WHERE id = ?", array($recordId));
-		if ($db->num_rows($result)) {
+		if (empty($recordId))
+			return false;
+		$row = (new \App\Db\Query())
+			->from('vtiger_cron_task')
+			->where(['id' => $recordId])
+			->one();
+		if ($row) {
 			$recordModelClass = Vtiger_Loader::getComponentClassName('Model', 'Record', $qualifiedModuleName);
 			$moduleModel = Settings_Vtiger_Module_Model::getInstance($qualifiedModuleName);
-			$rowData = $db->query_result_rowdata($result, 0);
 			$recordModel = new $recordModelClass();
-			$recordModel->setData($rowData)->setModule($moduleModel);
+			$recordModel->setData($row)->setModule($moduleModel);
 			return $recordModel;
 		}
+
 		return false;
 	}
 
 	public static function getInstanceByName($name)
 	{
-		$db = PearDatabase::getInstance();
-
-		$result = $db->pquery("SELECT * FROM vtiger_cron_task WHERE name = ?", array($name));
-		if ($db->num_rows($result)) {
+		$query = (new \App\Db\Query())
+			->from('vtiger_cron_task')
+			->where(['name' => $name]);
+		$row = $query->createCommand()->queryOne();
+		if ($row) {
 			$moduleModel = new Settings_CronTasks_Module_Model();
-			$rowData = $db->query_result_rowdata($result, 0);
 			$recordModel = new self();
-			$recordModel->setData($rowData)->setModule($moduleModel);
+			$recordModel->setData($row)->setModule($moduleModel);
 			return $recordModel;
 		}
 		return false;
@@ -248,6 +248,10 @@ class Settings_CronTasks_Record_Model extends Settings_Vtiger_Record_Model
 
 	public function getMinimumFrequency()
 	{
-		return getMinimumCronFrequency() * 60;
+		$frequency = AppConfig::main('MINIMUM_CRON_FREQUENCY');
+		if (!empty($frequency)) {
+			return $frequency * 60;
+		}
+		return 60;
 	}
 }

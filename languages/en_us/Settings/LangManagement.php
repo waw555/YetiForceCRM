@@ -54,6 +54,7 @@ $languageStrings = [
 	'LBL_LANGUAGE' => 'Language',
 	'LBL_SHOW' => 'Show',
 	'LBL_STATS_INFO' => 'The presented statistical values determine the ratio of untranslated labels to all labels that exist in the base language file(s) in percentage.',
+	'LBL_UNTRANSLATED_LABELS' => 'Untranslated labels',
 ];
 $jsLanguageStrings = [
 	'Translations' => 'Translations',
@@ -67,4 +68,5 @@ $jsLanguageStrings = [
 	'Search' => 'Search:',
 	'No data available in table' => 'No translations',
 	'JS_EXPORT' => 'Export',
+	'JS_NOTRANSLATION' => '--No Translation--', 
 ];

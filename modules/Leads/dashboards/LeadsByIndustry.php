@@ -12,7 +12,7 @@
 class Leads_LeadsByIndustry_Dashboard extends Vtiger_IndexAjax_View
 {
 
-	function getSearchParams($value, $assignedto, $dates)
+	public function getSearchParams($value, $assignedto, $dates)
 	{
 		$listSearchParams = [];
 		$conditions = array(array('industry', 'e', $value));
@@ -28,51 +28,43 @@ class Leads_LeadsByIndustry_Dashboard extends Vtiger_IndexAjax_View
 	/**
 	 * Function returns Leads grouped by Industry
 	 * @param type $data
-	 * @return <Array>
+	 * @return array
 	 */
 	public function getLeadsByIndustry($owner, $dateFilter)
 	{
-		$db = PearDatabase::getInstance();
 		$module = 'Leads';
-		$currentUser = Users_Record_Model::getCurrentUserModel();
-		$instance = CRMEntity::getInstance($module);
-		$securityParameter = $instance->getUserAccessConditionsQuerySR($module, $currentUser);
-		$securityParameterSql = $dateFilterSql = $ownerSql = '';
-		$params = [];
+		$query = new \App\Db\Query();
+		$query->select([
+				'count' => new \yii\db\Expression('COUNT(*)'),
+				'industryvalue' => new \yii\db\Expression("CASE WHEN vtiger_leaddetails.industry IS NULL OR vtiger_leaddetails.industry = '' THEN ''
+						ELSE vtiger_leaddetails.industry END")])
+			->from('vtiger_leaddetails')
+			->innerJoin('vtiger_crmentity', 'vtiger_leaddetails.leadid = vtiger_crmentity.crmid')
+			->leftJoin('vtiger_industry', 'vtiger_leaddetails.industry = vtiger_industry.industry')
+			->where(['vtiger_crmentity.deleted' => 0, 'vtiger_leaddetails.converted' => 0]);
 		if (!empty($owner)) {
-			$ownerSql = ' AND smownerid = ' . $owner;
+			$query->andWhere(['smownerid' => $owner]);
 		}
-		if (!empty($securityParameter))
-			$securityParameterSql = $securityParameter;
-
 		if (!empty($dateFilter)) {
-			$dateFilterSql = ' AND createdtime BETWEEN ? AND ? ';
-			//client is not giving time frame so we are appending it
-			$params[] = $dateFilter['start'] . ' 00:00:00';
-			$params[] = $dateFilter['end'] . ' 23:59:59';
+			$query->andWhere(['between', 'createdtime', $dateFilter['start'] . ' 00:00:00', $dateFilter['end'] . ' 23:59:59']);
 		}
-
-		$query = sprintf('SELECT COUNT(*) as count, CASE WHEN vtiger_leaddetails.industry IS NULL OR vtiger_leaddetails.industry = "" THEN "" 
-						ELSE vtiger_leaddetails.industry END AS industryvalue FROM vtiger_leaddetails 
-						INNER JOIN vtiger_crmentity ON vtiger_leaddetails.leadid = vtiger_crmentity.crmid
-						AND deleted=0 AND converted = 0 %s %s %s
-						INNER JOIN vtiger_industry ON vtiger_leaddetails.industry = vtiger_industry.industry 
-						GROUP BY industryvalue ORDER BY vtiger_industry.sortorderid', $ownerSql, $dateFilterSql, $securityParameterSql);
-		$result = $db->pquery($query, $params);
+		\App\PrivilegeQuery::getConditions($query, $module);
+		$query->groupBy(['industryvalue', 'vtiger_industry.sortorderid'])->orderBy('vtiger_industry.sortorderid');
+		$dataReader = $query->createCommand()->query();
 		$response = [];
-		if ($db->num_rows($result) > 0) {
-			while ($row = $db->getRow($result)) {
-				$data[$i]['label'] = vtranslate($row['industryvalue'], 'Leads');
-				$ticks[$i][0] = $i;
-				$ticks[$i][1] = vtranslate($row['industryvalue'], 'Leads');
-				$data[$i]['data'][0][0] = $i;
-				$data[$i]['data'][0][1] = $row['count'];
-				$name[] = $row['industryvalue'];
-			}
-			$response['chart'] = $data;
-			$response['ticks'] = $ticks;
-			$response['name'] = $name;
+		$i = 0;
+		while ($row = $dataReader->read()) {
+			$data[$i]['label'] = \App\Language::translate($row['industryvalue'], 'Leads');
+			$ticks[$i][0] = $i;
+			$ticks[$i][1] = \App\Language::translate($row['industryvalue'], 'Leads');
+			$data[$i]['data'][0][0] = $i;
+			$data[$i]['data'][0][1] = $row['count'];
+			$name[] = $row['industryvalue'];
+			$i++;
 		}
+		$response['chart'] = $data;
+		$response['ticks'] = $ticks;
+		$response['name'] = $name;
 		return $response;
 	}
 
@@ -96,10 +88,16 @@ class Leads_LeadsByIndustry_Dashboard extends Vtiger_IndexAjax_View
 
 		$createdTime = $request->get('createdtime');
 
+		$dates = [];
 		//Date conversion from user to database format
 		if (!empty($createdTime)) {
 			$dates['start'] = Vtiger_Date_UIType::getDBInsertedValue($createdTime['start']);
 			$dates['end'] = Vtiger_Date_UIType::getDBInsertedValue($createdTime['end']);
+		} else {
+			$time = Settings_WidgetsManagement_Module_Model::getDefaultDate($widget);
+			if($time !== false){
+				$dates = $time;
+			}
 		}
 
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
@@ -116,9 +114,10 @@ class Leads_LeadsByIndustry_Dashboard extends Vtiger_IndexAjax_View
 		$viewer->assign('MODULE_NAME', $moduleName);
 		$viewer->assign('DATA', $data);
 		$viewer->assign('CURRENTUSER', $currentUser);
+		$viewer->assign('DTIME', $dates);
 
-		$accessibleUsers = \includes\fields\Owner::getInstance('Leads', $currentUser)->getAccessibleUsersForModule();
-		$accessibleGroups = \includes\fields\Owner::getInstance('Leads', $currentUser)->getAccessibleGroupForModule();
+		$accessibleUsers = \App\Fields\Owner::getInstance('Leads', $currentUser)->getAccessibleUsersForModule();
+		$accessibleGroups = \App\Fields\Owner::getInstance('Leads', $currentUser)->getAccessibleGroupForModule();
 		$viewer->assign('ACCESSIBLE_USERS', $accessibleUsers);
 		$viewer->assign('ACCESSIBLE_GROUPS', $accessibleGroups);
 		$viewer->assign('OWNER', $ownerForwarded);

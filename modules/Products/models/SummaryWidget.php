@@ -12,64 +12,68 @@
 class Products_SummaryWidget_Model
 {
 
+	const MODULES = ['Products', 'OutsourcedProducts', 'Assets', 'Services', 'OSSOutsourcedServices', 'OSSSoldServices'];
+	const CATEGORY_MODULES = ['Products', 'OutsourcedProducts', 'Services', 'OSSOutsourcedServices'];
+
 	public static function getCleanInstance()
 	{
 		$instance = new self();
 		return $instance;
 	}
 
-	function getProductsServices(Vtiger_Request $request)
+	public function getProductsServices(Vtiger_Request $request, Vtiger_Viewer $viewer)
 	{
 		$fromModule = $request->get('fromModule');
 		$record = $request->get('record');
 		$mod = $request->get('mod');
-		if (!in_array($mod, ['Products', 'Services']))
-			die('Not supported Module');
-
-		$db = PearDatabase::getInstance();
-
+		if (!in_array($mod, self::MODULES)) {
+			throw new \Exception\AppException('Not supported Module');
+		}
 		$limit = 10;
-		$params = [];
 		if (!empty($request->get('limit'))) {
 			$limit = $request->get('limit');
 		}
+		$pagingModel = new Vtiger_Paging_Model();
+		$pagingModel->set('page', 0);
+		$pagingModel->set('limit', $limit);
 
-		$currentUser = Users_Record_Model::getCurrentUserModel();
-		$instance = CRMEntity::getInstance($mod);
-		$securityParameter = $instance->getUserAccessConditionsQuerySR($mod, $currentUser);
-
-		if ($mod == 'Products') {
-			$sql = 'SELECT vtiger_products.productid AS id, vtiger_products.pscategory AS category, vtiger_products.productname AS name, vtiger_crmentity.smownerid '
-				. 'FROM vtiger_products '
-				. 'INNER JOIN vtiger_crmentity ON vtiger_products.productid = vtiger_crmentity.crmid '
-				. 'INNER JOIN vtiger_seproductsrel ON vtiger_products.productid = vtiger_seproductsrel.productid '
-				. 'LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid = vtiger_users.id '
-				. 'LEFT JOIN vtiger_groups ON vtiger_crmentity.smownerid = vtiger_groups.groupid '
-				. 'WHERE vtiger_crmentity.deleted=0 AND vtiger_products.productid > 0 AND vtiger_seproductsrel.setype = ? AND vtiger_seproductsrel.crmid = ?';
-			$params[] = $fromModule;
-			$params[] = $record;
-		} elseif ($mod == 'Services') {
-			$sql = 'SELECT vtiger_service.serviceid AS id, vtiger_service.pscategory AS category, vtiger_service.servicename AS name, vtiger_crmentity.smownerid '
-				. 'FROM vtiger_service '
-				. 'INNER JOIN vtiger_crmentity ON vtiger_service.serviceid = vtiger_crmentity.crmid '
-				. 'INNER JOIN vtiger_crmentityrel ON (vtiger_crmentityrel.relcrmid = vtiger_crmentity.crmid OR vtiger_crmentityrel.crmid = vtiger_crmentity.crmid)'
-				. 'LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid = vtiger_users.id '
-				. 'LEFT JOIN vtiger_groups ON vtiger_crmentity.smownerid = vtiger_groups.groupid '
-				. 'WHERE vtiger_crmentity.deleted=0 AND vtiger_service.serviceid > 0 AND (vtiger_crmentityrel.crmid IN (?) OR vtiger_crmentityrel.relcrmid IN (?))';
-			$params[] = $record;
-			$params[] = $record;
+		$parentRecordModel = Vtiger_Record_Model::getInstanceById($record, $fromModule);
+		$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $mod);
+		$recordsModels = $relationListView->getEntries($pagingModel);
+		$recordsHeader = $relationListView->getHeaders();
+		array_splice($recordsHeader, 3);
+		$viewer->assign('RELATED_RECORDS', $recordsModels);
+		$viewer->assign('RELATED_HEADERS', $recordsHeader);
+		if (in_array($mod, self::CATEGORY_MODULES)) {
+			$viewer->assign('RELATED_HEADERS_TREE', $relationListView->getTreeHeaders());
+			$viewer->assign('RELATED_RECORDS_TREE', $relationListView->getTreeEntries());
 		}
+		$viewer->assign('RECORD_PAGING_MODEL', $pagingModel);
+	}
 
-		if ($securityParameter != '')
-			$sql.= $securityParameter;
-
-		$sql.= sprintf(' LIMIT %s', $limit);
-		$result = $db->pquery($sql, $params);
-		$returnData = [];
-		while ($row = $db->fetch_array($result)) {
-			$returnData[] = $row;
+	/**
+	 * Get releted modules record counts
+	 * @param Vtiger_Record_Model $parentRecordModel
+	 * @return type
+	 */
+	public static function getModulesAndCount(Vtiger_Record_Model $parentRecordModel)
+	{
+		$modules = [];
+		foreach (self::MODULES as &$moduleName) {
+			$count = 0;
+			if (!\App\Privilege::isPermitted($moduleName)) {
+				continue;
+			}
+			$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $moduleName);
+			if (!$relationListView->getRelationModel()) {
+				continue;
+			}
+			if (in_array($moduleName, self::CATEGORY_MODULES)) {
+				$count += (int) $relationListView->getRelatedTreeEntriesCount();
+			}
+			$count += (int) $relationListView->getRelatedEntriesCount();
+			$modules[$moduleName] = $count;
 		}
-		$showMore = (int) $limit == count($returnData) ? 1 : 0;
-		return ['data' => $returnData, 'showMore' => $showMore];
+		return $modules;
 	}
 }

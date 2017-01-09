@@ -15,14 +15,14 @@ class Leads_Record_Model extends Vtiger_Record_Model
 	/**
 	 * Function returns the url for converting lead
 	 */
-	function getConvertLeadUrl()
+	public function getConvertLeadUrl()
 	{
 		return 'index.php?module=' . $this->getModuleName() . '&view=ConvertLead&record=' . $this->getId();
 	}
 
 	/**
 	 * Static Function to get the list of records matching the search key
-	 * @param <String> $searchKey
+	 * @param string $searchKey
 	 * @return <Array> - List of Vtiger_Record_Model or Module Specific Record Model instances
 	 */
 	public static function getSearchResult($searchKey, $moduleName = false, $limit = false)
@@ -35,7 +35,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 
 		$params = ['%' . $currentUser->getId() . '%', "%$label%"];
 		$queryFrom = 'SELECT u_yf_crmentity_search_label.`crmid`,u_yf_crmentity_search_label.`setype`,u_yf_crmentity_search_label.`searchlabel` FROM `u_yf_crmentity_search_label` INNER JOIN vtiger_leaddetails ON vtiger_leaddetails.leadid = u_yf_crmentity_search_label.crmid';
-		$queryWhere = ' WHERE u_yf_crmentity_search_label.`userid` LIKE ? AND u_yf_crmentity_search_label.`searchlabel` LIKE ? AND vtiger_leaddetails.converted = 0';
+		$queryWhere = ' WHERE u_yf_crmentity_search_label.`userid` LIKE ? && u_yf_crmentity_search_label.`searchlabel` LIKE ? && vtiger_leaddetails.converted = 0';
 		$orderWhere = '';
 		if ($moduleName !== false) {
 			$multiMode = is_array($moduleName);
@@ -43,12 +43,12 @@ class Leads_Record_Model extends Vtiger_Record_Model
 				$queryWhere .= sprintf(' AND `setype` IN (%s)', $adb->generateQuestionMarks($moduleName));
 				$params = array_merge($params, $moduleName);
 			} else {
-				$queryWhere .= ' AND `setype` = ?';
+				$queryWhere .= ' && `setype` = ?';
 				$params[] = $moduleName;
 			}
 		} elseif (\AppConfig::search('GLOBAL_SEARCH_SORTING_RESULTS') == 2) {
 			$queryFrom .= ' LEFT JOIN vtiger_entityname ON vtiger_entityname.modulename = u_yf_crmentity_search_label.setype';
-			$queryWhere .= ' AND vtiger_entityname.`turn_off` = 1 ';
+			$queryWhere .= ' && vtiger_entityname.`turn_off` = 1 ';
 			$orderWhere = ' vtiger_entityname.sequence';
 		}
 		$query = $queryFrom . $queryWhere;
@@ -72,7 +72,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 			}
 		}
 		$convertedInfo = Leads_Module_Model::getConvertedInfo($leadIdsList);
-		$labels = \includes\Record::getLabel($ids);
+		$labels = \App\Record::getLabel($ids);
 
 		foreach ($rows as &$row) {
 			if ($row['setype'] === 'Leads' && $convertedInfo[$row['crmid']]) {
@@ -83,7 +83,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 			$row['label'] = $labels[$row['crmid']];
 			$row['smownerid'] = $recordMeta['smownerid'];
 			$row['createdtime'] = $recordMeta['createdtime'];
-			$row['permitted'] = \includes\Privileges::isPermitted($row['setype'], 'DetailView', $row['crmid']);
+			$row['permitted'] = \App\Privilege::isPermitted($row['setype'], 'DetailView', $row['crmid']);
 			$moduleName = $row['setype'];
 			$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 			$modelClassName = Vtiger_Loader::getComponentClassName('Model', 'Record', $moduleName);
@@ -97,7 +97,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 	 * Function returns Account fields for Lead Convert
 	 * @return Array
 	 */
-	function getAccountFieldsForLeadConvert()
+	public function getAccountFieldsForLeadConvert()
 	{
 		$accountsFields = array();
 		$privilegeModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
@@ -131,7 +131,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 			}
 			foreach ($complusoryFields as $complusoryField) {
 				$fieldModel = Vtiger_Field_Model::getInstance($complusoryField, $moduleModel);
-				if ($fieldModel->getPermissions('readwrite')) {
+				if ($fieldModel->getPermissions(false)) {
 					$industryFieldModel = $moduleModel->getField($complusoryField);
 					$industryLeadMappedField = $this->getConvertLeadMappedField($complusoryField, $moduleName);
 					if ($industryLeadMappedField) {
@@ -148,10 +148,10 @@ class Leads_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns field mapped to Leads field, used in Lead Convert for settings the field values
-	 * @param <String> $fieldName
-	 * @return <String>
+	 * @param string $fieldName
+	 * @return string
 	 */
-	function getConvertLeadMappedField($fieldName, $moduleName)
+	public function getConvertLeadMappedField($fieldName, $moduleName)
 	{
 		$mappingFields = $this->get('mappingFields');
 
@@ -192,7 +192,7 @@ class Leads_Record_Model extends Vtiger_Record_Model
 	 * Function returns the fields required for Lead Convert
 	 * @return <Array of Vtiger_Field_Model>
 	 */
-	function getConvertLeadFields()
+	public function getConvertLeadFields()
 	{
 		$convertFields = array();
 		$accountFields = $this->getAccountFieldsForLeadConvert();
@@ -204,9 +204,9 @@ class Leads_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns the url for create event
-	 * @return <String>
+	 * @return string
 	 */
-	function getCreateEventUrl()
+	public function getCreateEventUrl()
 	{
 		$calendarModuleModel = Vtiger_Module_Model::getInstance('Calendar');
 		return $calendarModuleModel->getCreateEventRecordUrl() . '&link=' . $this->getId();
@@ -214,28 +214,11 @@ class Leads_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns the url for create todo
-	 * @return <String>
+	 * @return string
 	 */
-	function getCreateTaskUrl()
+	public function getCreateTaskUrl()
 	{
 		$calendarModuleModel = Vtiger_Module_Model::getInstance('Calendar');
 		return $calendarModuleModel->getCreateTaskRecordUrl() . '&link=' . $this->getId();
-	}
-
-	/**
-	 * Function to check whether the lead is converted or not
-	 * @return True if the Lead is Converted false otherwise.
-	 */
-	function isLeadConverted()
-	{
-		$db = PearDatabase::getInstance();
-		$id = $this->getId();
-		$sql = "select converted from vtiger_leaddetails where converted = 1 and leadid=?";
-		$result = $db->pquery($sql, array($id));
-		$rowCount = $db->num_rows($result);
-		if ($rowCount > 0) {
-			return true;
-		}
-		return false;
 	}
 }

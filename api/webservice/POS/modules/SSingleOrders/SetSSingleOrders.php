@@ -29,12 +29,13 @@ class API_SSingleOrders_SetSSingleOrders extends BaseAction
 	public function post($orders)
 	{
 		vglobal('current_user', Users_Privileges_Model::getInstanceById($this->user['user_id']));
+		App\User::setCurrentUserId($this->user['user_id']);
 		$idsToReturn = [];
 		foreach ($orders as $offer) {
 			if ($this->hasPermissionToStorage($offer['storage'])) {
 				$moduleName = 'SSingleOrders';
 				$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName);
-				$recordModel->set('subject', $offer['date'] . ' - ' .  $offer['brutto']);
+				$recordModel->set('subject', $offer['date'] . ' - ' . $offer['brutto']);
 				$recordModel->set('ssingleorders_status', $offer['status']);
 				$recordModel->set('date_start', $offer['date']);
 				$recordModel->set('pos', $this->api->app['id']);
@@ -47,7 +48,6 @@ class API_SSingleOrders_SetSSingleOrders extends BaseAction
 				$recordModel->set('description', $offer['description']);
 				$recordModel->set('accountid', $this->api->app['accounts_id']);
 				$recordModel->set('assigned_user_id', $this->user['user_id']);
-				$recordModel->set('mode', '');
 				$countInventoryData = 0;
 				$defaultCurrency = vtlib\Functions::getDefaultCurrencyInfo()['id'];
 				$inventory = Vtiger_InventoryField_Model::getInstance($moduleName);
@@ -68,7 +68,7 @@ class API_SSingleOrders_SetSSingleOrders extends BaseAction
 					$inventoryData->set('currency' . $countInventoryData, $defaultCurrency);
 				}
 				$inventoryData->set('inventoryItemsNo', $countInventoryData);
-				$recordModel->set('inventoryData', $inventoryData);
+				$recordModel->setInventoryRawData($inventoryData);
 				$recordModel->save();
 				$idsToReturn[$offer['id']] = $recordModel->getid();
 			} else {

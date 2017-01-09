@@ -17,11 +17,11 @@
 									{if AppConfig::main('isActiveSendingMails') && Users_Privileges_Model::isPermitted('OSSMail')}
 										{if $USER_MODEL->get('internal_mailer') == 1}
 											{assign var=CONFIG value=OSSMail_Module_Model::getComposeParameters()}	
-											{assign var=COMPOSE_URL value=OSSMail_Module_Model::getComposeUrl()}
+											{assign var=COMPOSE_URL value=OSSMail_Module_Model::getComposeUrl($SMODULENAME, $SRECORD, 'Detail')}
 											{assign var=POPUP value=$CONFIG['popup']}
 											<button type="button" class="btn btn-sm btn-default sendMailBtn" data-url="{$COMPOSE_URL}&mid={$RECORD_MODEL->getId()}&type=reply" data-popup="{$POPUP}" title="{vtranslate('LBL_REPLY','OSSMailView')}">
 												<img width="14px" src="{Yeti_Layout::getLayoutFile('modules/OSSMailView/previewReply.png')}" alt="{vtranslate('LBL_REPLY','OSSMailView')}">
-												&nbsp;&nbsp;<strong>{vtranslate('LBL_REPLYALLL','OSSMailView')}</strong>
+												&nbsp;&nbsp;<strong>{vtranslate('LBL_REPLY','OSSMailView')}</strong>
 											</button>
 											<button type="button" class="btn btn-sm btn-default sendMailBtn" data-url="{$COMPOSE_URL}&mid={$RECORD_MODEL->getId()}&type=replyAll" data-popup="{$POPUP}" title="{vtranslate('LBL_REPLYALLL','OSSMailView')}">
 												<img width="14px" src="{Yeti_Layout::getLayoutFile('modules/OSSMailView/previewReplyAll.png')}" alt="{vtranslate('LBL_REPLYALLL','OSSMailView')}">
@@ -34,7 +34,7 @@
 										{else}
 											<a class="btn btn-sm btn-default" href="{OSSMail_Module_Model::getExternalUrlForWidget($RECORD_MODEL, 'reply')}" title="{vtranslate('LBL_CREATEMAIL', 'OSSMailView')}">
 												<img width="14px" src="{Yeti_Layout::getLayoutFile('modules/OSSMailView/previewReply.png')}" alt="{vtranslate('LBL_REPLY','OSSMailView')}">
-												&nbsp;&nbsp;<strong>{vtranslate('LBL_REPLYALLL','OSSMailView')}</strong>
+												&nbsp;&nbsp;<strong>{vtranslate('LBL_REPLY','OSSMailView')}</strong>
 											</a>
 											<a class="btn btn-sm btn-default" href="{OSSMail_Module_Model::getExternalUrlForWidget($RECORD_MODEL, 'replyAll')}" title="{vtranslate('LBL_REPLYALLL', 'OSSMailView')}">
 												<img width="14px" src="{Yeti_Layout::getLayoutFile('modules/OSSMailView/previewReplyAll.png')}" alt="{vtranslate('LBL_REPLYALLL','OSSMailView')}">
@@ -125,14 +125,9 @@
 									<span class="col-md-9">
 										<span id="emailPreview_attachment" class="">
 											{foreach item=ATTACHMENT from=$ATTACHMENTS}
-												<a class="btn btn-xs btn-primary" title="{$ATTACHMENT['name']}"
-												   {if array_key_exists('docid',$ATTACHMENT)}
-													   href="index.php?module=Documents&action=DownloadFile&record={$ATTACHMENT['docid']}
-													   &fileid={$ATTACHMENT['id']}"
-												   {else}
-													   href="index.php?module=Emails&action=DownloadFile&attachment_id={$ATTACHMENT['id']}"
-												   {/if}
-												   ><span class="glyphicon glyphicon-paperclip"></span>&nbsp;&nbsp;{$ATTACHMENT['file']}</a>&nbsp;&nbsp;
+												<a class="btn btn-xs btn-primary" title="{$ATTACHMENT['name']}" 
+												   href="index.php?module=Documents&action=DownloadFile&record={$ATTACHMENT['id']}">
+													<span class="glyphicon glyphicon-paperclip"></span>&nbsp;&nbsp;{$ATTACHMENT['file']}</a>&nbsp;&nbsp;
 											{/foreach}
 										</span>
 									</span>
@@ -155,7 +150,7 @@
 								</span>
 							</div>
 							<div class="textAlignCenter">
-								<span><strong> {vtranslate('LBL_OWNER','Emails')} : {getOwnerName($OWNER)}</strong></span>
+								<span><strong> {vtranslate('LBL_OWNER','Emails')} : {\App\Fields\Owner::getLabel($OWNER)}</strong></span>
 							</div>
 						</form>
 					</div>
@@ -173,4 +168,8 @@
 	<script>
 		$('#emailPreview_Content').css('height', document.documentElement.clientHeight - 267);
 	</script>
+{else}
+	{foreach key=index item=jsModel from=$SCRIPTS}
+		<script type="{$jsModel->getType()}" src="{$jsModel->getSrc()}"></script>
+	{/foreach}
 {/if}

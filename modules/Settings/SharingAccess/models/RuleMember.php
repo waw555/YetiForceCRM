@@ -54,7 +54,7 @@ class Settings_SharingAccess_RuleMember_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get the Group Name
-	 * @return <String>
+	 * @return string
 	 */
 	public function getName()
 	{
@@ -63,7 +63,7 @@ class Settings_SharingAccess_RuleMember_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get the Group Name
-	 * @return <String>
+	 * @return string
 	 */
 	public function getQualifiedName()
 	{
@@ -109,19 +109,15 @@ class Settings_SharingAccess_RuleMember_Model extends Vtiger_Base_Model
 			if ($result->rowCount()) {
 				$row = $db->query_result_rowdata($result, 0);
 				$qualifiedId = self::getQualifiedId(self::RULE_MEMBER_TYPE_USERS, $row['id']);
-				$name = $row['first_name'].' '.$row['last_name'];
+				$name = $row['first_name'] . ' ' . $row['last_name'];
 				$rule = new self();
 				return $rule->set('id', $qualifiedId)->set('name', $name);
 			}
 		}
-		
-		if ($type == self::RULE_MEMBER_TYPE_ROLES) {
-			$sql = 'SELECT * FROM vtiger_role WHERE roleid = ?';
-			$params = array($memberId);
-			$result = $db->pquery($sql, $params);
 
-			if ($db->num_rows($result)) {
-				$row = $db->query_result_rowdata($result, 0);
+		if ($type == self::RULE_MEMBER_TYPE_ROLES) {
+			$row = App\PrivilegeUtil::getRoleDetail($memberId);
+			if ($row) {
 				$qualifiedId = self::getQualifiedId(self::RULE_MEMBER_TYPE_ROLES, $row['roleid']);
 				$name = $row['rolename'];
 				$rule = new self();
@@ -130,19 +126,14 @@ class Settings_SharingAccess_RuleMember_Model extends Vtiger_Base_Model
 		}
 
 		if ($type == self::RULE_MEMBER_TYPE_ROLE_AND_SUBORDINATES) {
-			$sql = 'SELECT * FROM vtiger_role WHERE roleid = ?';
-			$params = array($memberId);
-			$result = $db->pquery($sql, $params);
-
-			if ($db->num_rows($result)) {
-				$row = $db->query_result_rowdata($result, 0);
+			$row = App\PrivilegeUtil::getRoleDetail($memberId);
+			if ($row) {
 				$qualifiedId = self::getQualifiedId(self::RULE_MEMBER_TYPE_ROLE_AND_SUBORDINATES, $row['roleid']);
 				$name = $row['rolename'];
 				$rule = new self();
 				return $rule->set('id', $qualifiedId)->set('name', $name);
 			}
 		}
-
 		return false;
 	}
 
@@ -178,7 +169,7 @@ class Settings_SharingAccess_RuleMember_Model extends Vtiger_Base_Model
 			$rule = new self();
 			$rules[self::RULE_MEMBER_TYPE_USERS][$qualifiedId] = $rule->set('id', $qualifiedId)->set('name', $userModel->getDisplayName());
 		}
-		
+
 		return $rules;
 	}
 }

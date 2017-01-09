@@ -56,10 +56,11 @@ class Settings_PDF_Module_Model extends Settings_Vtiger_Module_Model
 		'watermark_size',
 		'watermark_angle',
 		'template_members',
-		'watermark_image'
+		'watermark_image',
+		'one_pdf'
 	];
 	public static $step1Fields = ['status', 'primary_name', 'secondary_name', 'module_name', 'metatags_status', 'meta_subject', 'meta_title', 'meta_author', 'meta_creator', 'meta_keywords'];
-	public static $step2Fields = ['page_format', 'margin_chkbox', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'header_height', 'footer_height', 'page_orientation', 'language', 'filename', 'visibility', 'default'];
+	public static $step2Fields = ['page_format', 'margin_chkbox', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'header_height', 'footer_height', 'page_orientation', 'language', 'filename', 'visibility', 'default', 'one_pdf'];
 	public static $step3Fields = ['module_name', 'header_content'];
 	public static $step4Fields = ['module_name', 'body_content'];
 	public static $step5Fields = ['footer_content'];
@@ -73,7 +74,7 @@ class Settings_PDF_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get the url for default view of the module
-	 * @return <string> - url
+	 * @return string - url
 	 */
 	public static function getDefaultUrl()
 	{
@@ -82,7 +83,7 @@ class Settings_PDF_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get the url for create view of the module
-	 * @return <string> - url
+	 * @return string - url
 	 */
 	public static function getCreateViewUrl()
 	{
@@ -177,20 +178,25 @@ class Settings_PDF_Module_Model extends Settings_Vtiger_Module_Model
 
 	public static function getMainModuleFields($moduleName)
 	{
-		$db = PearDatabase::getInstance();
-		if(is_array($moduleName)) {
+		if (is_array($moduleName)) {
 			$moduleName = $moduleName['moduleName'];
 		} elseif (strpos($moduleName, '+') !== false) {
 			$moduleName = explode('+', $moduleName)[1];
 		}
-		$tabId = getTabid($moduleName);
-		$query = 'SELECT `fieldid`, `fieldlabel`, `fieldname`, `uitype`, `block` FROM `vtiger_field` WHERE `tabid` = ? AND `presence` != ? AND `typeofdata` != ? AND `block` NOT IN (?) ORDER BY block,sequence;';
-		$result = $db->pquery($query, [$tabId, 1, 'P~M', 0]);
+		$tabId = \App\Module::getModuleId($moduleName);
+		$dataReader = (new \App\Db\Query())->select(['fieldid', 'fieldlabel', 'fieldname', 'uitype', 'block'])
+				->from('vtiger_field')
+				->where(['tabid' => $tabId])
+				->andWhere(['<>', 'block', 0])
+				->andWhere(['<>', 'presence', 1])
+				->andWhere(['<>', 'typeofdata', 'P~M'])
+				->orderBy(['block' => SORT_ASC, 'sequence' => SORT_ASC])
+				->createCommand()->query();
 		$output = [];
 		$currentBlockId = '';
 		$currentBlockName = '';
 		$i = 0;
-		while ($row = $db->fetchByAssoc($result)) {
+		while ($row = $dataReader->read()) {
 			if ($currentBlockId != $row['block']) {
 				$currentBlockName = vtranslate(getBlockName($row['block']), $moduleName);
 			}
@@ -245,7 +251,7 @@ class Settings_PDF_Module_Model extends Settings_Vtiger_Module_Model
 	{
 		$company = [];
 
-		$companyDetails = getCompanyDetails();
+		$companyDetails = Vtiger_CompanyDetails_Model::getInstanceById()->getData();
 		foreach ($companyDetails as $key => $value) {
 			if ($key == 'organization_id') {
 				continue;

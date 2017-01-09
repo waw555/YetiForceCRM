@@ -12,7 +12,7 @@
 class Settings_DataAccess_DeleteTemplate_Action extends Settings_Vtiger_Index_Action
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		return;
 	}
@@ -20,15 +20,9 @@ class Settings_DataAccess_DeleteTemplate_Action extends Settings_Vtiger_Index_Ac
 	public function process(Vtiger_Request $request)
 	{
 		$tplId = $request->get('tpl_id');
-
-		$db = PearDatabase::getInstance();
-
-		$deleteConditionSql = "DELETE FROM vtiger_dataaccess_cnd WHERE dataaccessid = ?";
-		$db->pquery($deleteConditionSql, array($tplId), TRUE);
-
-		$deleteMineRecordSql = "DELETE FROM vtiger_dataaccess WHERE dataaccessid = ?";
-		$db->pquery($deleteMineRecordSql, array($tplId), true);
-
+		$db = \App\Db::getInstance();
+		$db->createCommand()->delete('vtiger_dataaccess_cnd', ['dataaccessid' => $tplId])->execute();
+		$db->createCommand()->delete('vtiger_dataaccess', ['dataaccessid' => $tplId])->execute();
 		header("Location: index.php?module=DataAccess&parent=Settings&view=Index");
 	}
 }

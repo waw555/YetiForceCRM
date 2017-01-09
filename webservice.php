@@ -7,13 +7,6 @@
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
  * ****************************************************************************** */
-
-/**
- * URL Verfication - Required to overcome Apache mis-configuration and leading to shared setup mode.
- */
-//Overrides GetRelatedList : used to get related query
-//TODO : Eliminate below hacking solution
-include_once('include/Webservices/Relation.php');
 include_once('include/main/WebUI.php');
 require_once('include/Webservices/Utils.php');
 require_once('include/Webservices/State.php');
@@ -22,14 +15,11 @@ require_once('include/Webservices/SessionManager.php');
 
 require_once('config/api.php');
 if (!in_array('webservices', $enabledServices)) {
-	die('Webservice - Service is not active');
+	echo 'Webservice - Service is not active';
+	return;
 }
 
 $API_VERSION = "0.22";
-
-global $seclog, $log;
-$seclog = & LoggerManager::getLogger('SECURITY');
-$log = & LoggerManager::getLogger('webservice');
 $adb = & PearDatabase::getInstance();
 
 function getRequestParamsArrayForOperation($operation)
@@ -71,9 +61,13 @@ $operation = strtolower($operation);
 $format = AppRequest::get('format', 'json');
 $sessionId = AppRequest::get('sessionName');
 
-$sessionManager = new SessionManager();
-$operationManager = new OperationManager($adb, $operation, $format, $sessionManager);
-
+try {
+	$sessionManager = new SessionManager();
+	$operationManager = new OperationManager($adb, $operation, $format, $sessionManager);
+} catch (WebServiceException $ex) {
+	echo $ex->getMessage();
+	return;
+}
 try {
 	if (!$sessionId || strcasecmp($sessionId, "null") === 0) {
 		$sessionId = null;
@@ -123,7 +117,7 @@ try {
 	$includes = $operationManager->getOperationIncludes();
 
 	foreach ($includes as $ind => $path) {
-		checkFileAccessForInclusion($path);
+		\vtlib\Deprecated::checkFileAccessForInclusion($path);
 		require_once($path);
 	}
 	$rawOutput = $operationManager->runOperation($operationInput, $current_user);

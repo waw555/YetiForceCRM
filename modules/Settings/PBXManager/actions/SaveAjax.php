@@ -18,6 +18,7 @@ class Settings_PBXManager_SaveAjax_Action extends Vtiger_SaveAjax_Action
 			throw new \Exception\NoPermittedForAdmin('LBL_PERMISSION_DENIED');
 		}
 	}
+
 	// To save Mapping of user from mapping popup
 	public function process(Vtiger_Request $request)
 	{
@@ -30,8 +31,7 @@ class Settings_PBXManager_SaveAjax_Action extends Vtiger_SaveAjax_Action
 			$recordModel->set('id', $id);
 		}
 
-		$connector = new PBXManager_PBXManager_Connector;
-		foreach ($connector->getSettingsParameters() as $field => $type) {
+		foreach (PBXManager_PBXManager_Connector::getSettingsParameters() as $field => $type) {
 			$recordModel->set($field, $request->get($field));
 		}
 

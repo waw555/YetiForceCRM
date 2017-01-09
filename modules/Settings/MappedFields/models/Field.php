@@ -9,11 +9,11 @@
 class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 {
 
-	var $inventoryField = false;
+	public $inventoryField = false;
 
 	/**
 	 * Function to get field uitype
-	 * @return <String> uitype
+	 * @return string uitype
 	 */
 	public function getUIType()
 	{
@@ -34,16 +34,16 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 
 	/**
 	 * Function to get field data type
-	 * @return <String> data type
+	 * @return string data type
 	 */
 	public function getFieldDataType()
 	{
-		if (!$this->fieldDataType && $this->getFieldType() == 'INVENTORY') {
+		if (!$this->fieldDataType && $this->get('typeofdata') == 'INVENTORY') {
 			$this->fieldDataType = 'inventory';
 		} elseif (!$this->fieldDataType) {
 			$this->fieldDataType = parent::getFieldDataType();
 		}
-		if($this->fieldDataType == 'salutation'){
+		if ($this->fieldDataType == 'salutation') {
 			$this->fieldDataType = 'string';
 		}
 		return $this->fieldDataType;
@@ -99,7 +99,7 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 
 	/**
 	 * Function to check if the current field is mandatory or not
-	 * @return <Boolean> - true/false
+	 * @return boolean - true/false
 	 */
 	public function isMandatory()
 	{
@@ -111,7 +111,7 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 
 	/**
 	 * Function to get field label
-	 * @return <String> label
+	 * @return string label
 	 */
 	public function getFieldLabelKey()
 	{
@@ -141,8 +141,8 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 	/**
 	 * Function to get instance
 	 * @param <String/Integer> $value
-	 * @param <String> $module
-	 * @param <String> $type
+	 * @param string $module
+	 * @param string $type
 	 * @return <Settings_MappedFields_Field_Model> field model
 	 */
 	public static function getInstance($value, $module = false, $type = '')
@@ -150,7 +150,7 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 		switch ($type) {
 			case 'SELF':
 				$fieldModel = parent::getInstance($value, $module);
-				if(!$fieldModel){
+				if (!$fieldModel) {
 					$fields = Settings_MappedFields_Module_Model::getSpecialFields();
 					$fieldModel = $fields[$value];
 				}
@@ -163,8 +163,8 @@ class Settings_MappedFields_Field_Model extends Vtiger_Field_Model
 				$fieldModel = parent::getInstance($value, $module);
 				break;
 		}
-		
-		if($fieldModel){
+
+		if ($fieldModel) {
 			$objectProperties = get_object_vars($fieldModel);
 			$fieldModel = new self();
 			foreach ($objectProperties as $properName => $propertyValue) {

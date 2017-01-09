@@ -1,6 +1,7 @@
 <?php
+
 /**
- * @package YetiForce.actions
+ * @package YetiForce.Action
  * @license licenses/License.html
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
@@ -8,7 +9,7 @@
 class Settings_WidgetsManagement_SaveAjax_Action extends Settings_Vtiger_IndexAjax_View
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$currentUserModel = Users_Record_Model::getCurrentUserModel();
 		$mode = $request->get('mode');
@@ -16,14 +17,13 @@ class Settings_WidgetsManagement_SaveAjax_Action extends Settings_Vtiger_IndexAj
 			throw new \Exception\AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
 		}
 		$sourceModule = $request->get('sourceModule');
-		$moduleModel = Vtiger_Module_Model::getInstance($sourceModule);
 		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$currentUserPriviligesModel->hasModuleActionPermission($moduleModel->getId(), 'Save')) {
+		if (!$currentUserPriviligesModel->hasModuleActionPermission($sourceModule, 'Save')) {
 			throw new \Exception\AppException(vtranslate('LBL_PERMISSION_DENIED', 'Vtiger'));
 		}
 	}
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('save');
@@ -41,7 +41,8 @@ class Settings_WidgetsManagement_SaveAjax_Action extends Settings_Vtiger_IndexAj
 			if (!$data['action'])
 				$data['action'] = 'saveDetails';
 			$action = $data['action'];
-			$result = Settings_WidgetsManagement_Module_Model::$action($data, $moduleName, $addToUser);
+			$widgetsManagementModel = new Settings_WidgetsManagement_Module_Model();
+			$result = $widgetsManagementModel->$action($data, $moduleName, $addToUser);
 		}
 		$response = new Vtiger_Response();
 		$response->setResult($result);
@@ -56,9 +57,11 @@ class Settings_WidgetsManagement_SaveAjax_Action extends Settings_Vtiger_IndexAj
 			$result = array('success' => false, 'message' => vtranslate('LBL_INVALID_DATA', $moduleName));
 		} else {
 			$action = $data['action'];
-			if (!$action)
+			if (!$action){
 				$action = 'removeWidget';
-			$result = Settings_WidgetsManagement_Module_Model::$action($data);
+			}
+			$widgetsManagementModel = new Settings_WidgetsManagement_Module_Model();
+			$result = $widgetsManagementModel->$action($data);
 		}
 		$response = new Vtiger_Response();
 		$response->setResult($result);

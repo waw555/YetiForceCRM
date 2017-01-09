@@ -52,7 +52,7 @@ class Users_ForgotPassword_Action
 	public function requestForgotPassword(Vtiger_Request $request)
 	{
 		$adb = PearDatabase::getInstance();
-		$username = vtlib_purify($request->get('user_name'));
+		$username = App\Purifier::purify($request->get('user_name'));
 		$result = $adb->pquery('select id,email1 from vtiger_users where user_name = ? ', array($username));
 		if ($adb->num_rows($result) > 0) {
 			$email = $adb->query_result($result, 0, 'email1');
@@ -71,16 +71,13 @@ class Users_ForgotPassword_Action
 					'hash' => md5($username . $time)
 				)
 			);
-			$trackURL = Vtiger_ShortURL_Helper::generateURL($options);
-			$data = [
-				'sysname' => 'UsersForgotPassword',
-				'to_email' => $email,
-				'module' => 'Users',
-				'record' => $userId,
-				'trackURL' => $trackURL,
-			];
-			$recordModel = Vtiger_Record_Model::getCleanInstance('OSSMailTemplates');
-			$status = $recordModel->sendMailFromTemplate($data);
+			\App\Mailer::sendFromTemplate([
+				'template' => 'UsersForgotPassword',
+				'moduleName' => 'Users',
+				'recordId' => $userId,
+				'to' => $email,
+				'trackURL' => Vtiger_ShortURL_Helper::generateURL($options)
+			]);
 			$site_URL = vglobal('site_URL') . 'index.php?modules=Users&view=Login';
 			if ($status === 1)
 				header('Location:  ' . $site_URL . '&status=1');
@@ -99,7 +96,7 @@ class Users_ForgotPassword_Action
 			if (AppConfig::security('RESET_LOGIN_PASSWORD')) {
 				$instance->requestForgotPassword($request);
 			} else {
-				die(vtranslate('LBL_PERMISSION_DENIED'));
+				throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 			}
 		} else {
 			$instance->changePassword($request);

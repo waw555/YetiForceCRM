@@ -27,7 +27,7 @@ class SessionManager
 	private $sessionVar = "__SessionExists";
 	private $error;
 
-	function SessionManager()
+	public function __construct()
 	{
 
 		global $maxWebServiceSessionLifeSpan, $maxWebServiceSessionIdleTime;
@@ -45,7 +45,7 @@ class SessionManager
 		HTTP_Session::setIdle($this->idleLife, true);
 	}
 
-	function isValid()
+	public function isValid()
 	{
 
 		$valid = true;
@@ -62,9 +62,7 @@ class SessionManager
 			HTTP_Session::destroy();
 			throw new WebServiceException(WebServiceErrorCode::$SESSIONIDLE, "Session has been invalidated to due lack activity");
 		}
-		//echo "<br>is new: ", HTTP_Session::isNew();
-		//invalid sessionId provided.
-		//echo "<br>get: ",$this->get($this->sessionVar);
+
 		if (!$this->get($this->sessionVar) && !HTTP_Session::isNew()) {
 			$valid = false;
 			HTTP_Session::destroy();
@@ -74,7 +72,7 @@ class SessionManager
 		return $valid;
 	}
 
-	function startSession($sid = null, $adoptSession = false)
+	public function startSession($sid = null, $adoptSession = false)
 	{
 
 //			if($sid){
@@ -90,7 +88,7 @@ class SessionManager
 
 		$newSID = HTTP_Session::id();
 
-		if (!$sid || $adoptSession == true) {
+		if (!$sid || $adoptSession === true) {
 			$this->set($this->sessionVar, "true");
 		} else {
 			if (!$this->get($this->sessionVar)) {
@@ -107,30 +105,27 @@ class SessionManager
 		return $sid;
 	}
 
-	function getSessionId()
+	public function getSessionId()
 	{
 		return HTTP_Session::id();
 	}
 
-	function set($var_name, $var_value)
+	public function set($var_name, $var_value)
 	{
-		//TODO test setRef and getRef combination
-		//echo "<br>setting name: ",$var_name," :value: ",$var_value;
 		HTTP_Session::set($var_name, $var_value);
 	}
 
-	function get($name)
+	public function get($name)
 	{
-		//echo "<br> getting for: ",$name," :value: ",HTTP_Session::get($name);
 		return HTTP_Session::get($name);
 	}
 
-	FUNCTION getError()
+	public function getError()
 	{
 		return $this->error;
 	}
 
-	function destroy()
+	public function destroy()
 	{
 		HTTP_Session::destroy();
 	}

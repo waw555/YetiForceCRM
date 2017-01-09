@@ -11,9 +11,6 @@ class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
 
 	private function getAccounts($moduleName, $user, $time, $pagingModel)
 	{
-		$currentUser = Users_Record_Model::getCurrentUserModel();
-		$instance = CRMEntity::getInstance($moduleName);
-		$securityParameter = $instance->getUserAccessConditionsQuerySR($moduleName, $currentUser);
 		$time['start'] = DateTimeField::convertToDBFormat($time['start']);
 		$time['end'] = DateTimeField::convertToDBFormat($time['end']);
 		$time['start'] .= ' 00:00:00';
@@ -30,9 +27,11 @@ class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
 			$sql .= ' AND vtiger_crmentity.smownerid = ? ';
 			$params[] = $user;
 		}
-		$sql .= $securityParameter . ' ORDER BY  vtiger_crmentity.createdtime DESC LIMIT ?, ?';
-		$params[] = $pagingModel->getStartIndex();
+		$sql.= \App\PrivilegeQuery::getAccessConditions($moduleName);
+		$sql .= ' ORDER BY  vtiger_crmentity.createdtime DESC LIMIT ? OFFSET ?';
+	
 		$params[] = $pagingModel->getPageLimit();
+		$params[] = $pagingModel->getStartIndex();
 		$db = PearDatabase::getInstance();
 		$result = $db->pquery($sql, $params);
 		$newAccounts = [];
@@ -60,8 +59,8 @@ class Accounts_NewAccounts_Dashboard extends Vtiger_IndexAjax_View
 		if (empty($user)) {
 			$user = Settings_WidgetsManagement_Module_Model::getDefaultUserId($widget);
 		}
-		$accessibleUsers = \includes\fields\Owner::getInstance($moduleName, $currentUser)->getAccessibleUsersForModule();
-		$accessibleGroups = \includes\fields\Owner::getInstance($moduleName, $currentUser)->getAccessibleGroupForModule();
+		$accessibleUsers = \App\Fields\Owner::getInstance($moduleName, $currentUser)->getAccessibleUsersForModule();
+		$accessibleGroups = \App\Fields\Owner::getInstance($moduleName, $currentUser)->getAccessibleGroupForModule();
 		if ($user == 'all') {
 			$user = array_keys($accessibleUsers);
 		}

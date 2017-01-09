@@ -54,7 +54,7 @@
 					</th>
 					{foreach item=LISTVIEW_HEADER from=$LISTVIEW_HEADERS}
 						<th class="noWrap {if $COLUMN_NAME eq $LISTVIEW_HEADER->get('column')}columnSorted{/if}">
-							<a href="javascript:void(0);" class="listViewHeaderValues" data-nextsortorderval="{if $COLUMN_NAME eq $LISTVIEW_HEADER->get('column')}{$NEXT_SORT_ORDER}{else}ASC{/if}" data-columnname="{$LISTVIEW_HEADER->get('column')}">{vtranslate($LISTVIEW_HEADER->get('label'), $MODULE)}
+							<a href="javascript:void(0);" class="listViewHeaderValues" {if $LISTVIEW_HEADER->isListviewSortable()}data-nextsortorderval="{if $COLUMN_NAME eq $LISTVIEW_HEADER->get('column')}{$NEXT_SORT_ORDER}{else}ASC{/if}"{/if} data-columnname="{$LISTVIEW_HEADER->get('column')}">{vtranslate($LISTVIEW_HEADER->get('label'), $MODULE)}
 								&nbsp;&nbsp;{if $COLUMN_NAME eq $LISTVIEW_HEADER->get('column')}&nbsp;&nbsp;<span class="{$SORT_IMAGE}"></span>{/if}</a>
 						</th>
 					{/foreach}
@@ -93,11 +93,11 @@
 					{/if}
 				</td>
 				<td width="5%" class="{$WIDTHTYPE}">
-					<div class='row'>
+					<div class="row">
 						{assign var=IMAGE_DETAILS value=$LISTVIEW_ENTRY->getImageDetails()}
 						{foreach item=IMAGE_INFO from=$IMAGE_DETAILS}
 							{if !empty($IMAGE_INFO.path) && !empty({$IMAGE_INFO.orgname})}
-								<div class='col-md-6'>
+								<div class="col-md-6">
 									<img class="list-user-img" src="{$IMAGE_INFO.path}_{$IMAGE_INFO.orgname}">
 								</div>
 							{/if}
@@ -111,7 +111,9 @@
 				</td>
 				{foreach item=LISTVIEW_HEADER from=$LISTVIEW_HEADERS}
 					{assign var=LISTVIEW_HEADERNAME value=$LISTVIEW_HEADER->get('name')}
-					<td class="{$WIDTHTYPE}" nowrap> {vtranslate($LISTVIEW_ENTRY->get($LISTVIEW_HEADERNAME), $MODULE)} {if !$LISTVIEW_HEADER@last}</td>{/if}
+					<td class="{$WIDTHTYPE}" nowrap>
+						{$LISTVIEW_ENTRY->getListViewDisplayValue($LISTVIEW_HEADERNAME)}
+					</td>
 				{/foreach}
 				<td width="5%">
 					{if $LISTVIEW_HEADER@last}
@@ -142,7 +144,7 @@
 					<tr>
 						<td>
 							{assign var=SINGLE_MODULE value="SINGLE_$MODULE"}
-							{vtranslate('LBL_NO_RECORDS_MATCHED_THIS_CRITERIA', $MODULE)} .<!--{if $IS_MODULE_EDITABLE} {vtranslate('LBL_CREATE')} <a href="{$MODULE_MODEL->getCreateRecordUrl()}">{vtranslate($SINGLE_MODULE, $MODULE)}</a>-->{/if}
+							{vtranslate('LBL_NO_RECORDS_MATCHED_THIS_CRITERIA', $MODULE)} <!--{if $IS_MODULE_EDITABLE} {vtranslate('LBL_CREATE')} <a href="{$MODULE_MODEL->getCreateRecordUrl()}">{vtranslate($SINGLE_MODULE, $MODULE)}</a>-->{/if}
 						</td>
 					</tr>
 				</tbody>

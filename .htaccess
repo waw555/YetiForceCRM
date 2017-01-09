@@ -29,13 +29,12 @@ RedirectMatch 403 (?i).*\.log$
 	#php_value	max_execution_time			600
 	#php_value	max_input_time				600
 
-	php_flag	magic_quotes_gpc			Off
-	php_flag	magic_quotes_runtime        Off
-
 	php_value	suhosin.request.max_vars	5000
 	php_value	suhosin.post.max_vars		5000
 	php_flag	suhosin.session.encrypt		Off
 
+	php_flag	session.cookie_httponly		On
+	#php_flag	session.cookie_secure		On
 	php_flag	session.auto_start			Off
 	# 86400 = 3600*24
 	php_value	session.gc_maxlifetime		86400 
@@ -51,6 +50,13 @@ RedirectMatch 403 (?i).*\.log$
 	FcgidConnectTimeout 600
 	FcgidBusyTimeout 600
 	FcgidIdleTimeout 600
+</IfModule>
+<IfModule mod_fcgid.c>
+	IdleTimeout 600
+	ProcessLifeTime 600
+	IPCConnectTimeout 600
+	IPCCommTimeout 600
+	BusyTimeout 600
 </IfModule>
 ########################
 # <FilesMatch "\.(inc|php|php3|php4|php5|php6|phtml|phps)$">

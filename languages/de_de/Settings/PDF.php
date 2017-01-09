@@ -5,8 +5,11 @@
  * @license licenses/License.html
  * @author Maciej Stencel <m.stencel@yetiforce.com>
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 $languageStrings = [
+	'PLL_TEXT' => 'Text',
+	'PLL_IMAGE' => 'Image',
 	'LBL_PDF' => 'PDF',
 	'LBL_PDF_DESCRIPTION' => 'Test Version der PDF Template Konfiguration',
 	'LBL_CREATING_PDF' => 'PDF Template erzeugen',
@@ -15,7 +18,7 @@ $languageStrings = [
 	'LBL_FINISH' => 'Erledigt',
 	'LBL_NEW' => 'Neu',
 	'LBL_NEXT' => 'Nächster',
-	'LBL_STEP_N' => 'Step %d',
+	'LBL_STEP_N' => 'Schritt %d',
 	'LBL_PDF_TEMPLATE' => 'PDF Template',
 	'LBL_DOCUMENT_DESCRIPTION' => 'Dokument Beschreibung',
 	'LBL_DOCUMENT_SETTINGS' => 'Dokument Einstellungen',
@@ -26,8 +29,8 @@ $languageStrings = [
 	'LBL_DOCUMENT_PERMISSIONS' => 'Berechtigungen',
 	'LBL_DOCUMENT_WATERMARK' => 'Wasserzeichen',
 	'Module' => 'Modul',
-	'active' => 'Aktiv',
-	'inactive' => 'Inaktiv',
+	'PLL_ACTIVE' => 'Aktiv',
+	'PLL_INACTIVE' => 'Inaktiv',
 	'LBL_PRIMARY_NAME' => 'Hauptname',
 	'LBL_SECONDARY_NAME' => 'Zusatzname',
 	'LBL_FOLDER_NAME' => 'Verzeichnisname',
@@ -56,8 +59,8 @@ $languageStrings = [
 	'LBL_LANGUAGE_CHOICE' => 'Sprachwahl',
 	'LBL_FILENAME' => 'Name der erzeugten Datei',
 	'LBL_VISIBILITY' => 'Verfügabr in Views',
-	'PLL_LISTVIEW' => 'List',
-	'PLL_DETAILVIEW' => 'Record',
+	'PLL_LISTVIEW' => 'Liste',
+	'PLL_DETAILVIEW' => 'Datensatz',
 	'LBL_DEFAULT_TPL' => 'Standardselektion',
 	'LBL_DOCUMENT_SETTINGS_DETAILS' => 'Dokument Einstellung',
 	'LBL_MAIN_MODULE_FIELDS' => 'Felder Hauptmodul',
@@ -75,7 +78,7 @@ $languageStrings = [
 	'LBL_USE_FUNCTION' => 'Funktion verwenden',
 	'LBL_EXAMPLE_EXPRESSION' => 'Ausdruck',
 	'LBL_EXPRESSION' => 'Ausdruck',
-	'LBL_ANNUAL_REVENUE' => 'annual_revenue',
+	'LBL_ANNUAL_REVENUE' => 'Jahresumsatz',
 	'LBL_EXPRESSION_EXAMPLE2' => "if mailingcountry == 'India' then concat(firstname,' ',lastname) else concat(lastname,' ',firstname) end",
 	'LBL_EXAMPLE_FIELD_NAME' => 'Feld',
 	'LBL_NOTIFY_OWNER' => 'Besitzer benachrichtigen',
@@ -89,7 +92,7 @@ $languageStrings = [
 	'LBL_FOOTER_DETAILS' => 'Ändern footer',
 	'LBL_MAIN_MODULE' => 'Haputmodul',
 	'LBL_WATERMARK_SIZE' => 'Schriftgröße',
-	'LBL_WATERMARK_ANGLE' => 'Angle in degrees',
+	'LBL_WATERMARK_ANGLE' => 'Winkel in Grad',
 	'LBL_IMPORT_TEMPLATE' => 'Import Template',
 	'LBL_UPLOAD_ERROR' => 'Import PDF template XML Datei nicht erfolgreich!',
 	'LBL_UPLOAD_OK' => 'Template wurde erfolgreich importiert.',
@@ -103,6 +106,8 @@ $languageStrings = [
 	'LBL_FOOTER_HEIGHT' => 'Footer margin',
 	'LBL_HEADER_IN_MILIMETERS' => 'Header margin from the top of the page in millimeters',
 	'LBL_FOOTER_IN_MILIMETERS' => 'Footer margin from the bottom of the page in millimeters',
+	'LBL_GENERATE_ONE_PDF' => 'Ein PDF für mehrere Datensätze generieren',
+	'LBL_GENERATE_ONE_PDF_INFO' => 'Wenn gewählt, wird in den Fällen, wenn ein PDF eine Sonderfunktion beinhaltet welche eine Tabelle für viele Datensätze erzeugt, nur ein PDF erzeugt.',
 	// page format names
 	'4A0' => '4A0',
 	'2A0' => '2A0',

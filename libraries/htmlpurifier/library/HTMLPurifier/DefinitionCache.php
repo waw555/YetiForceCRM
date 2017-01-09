@@ -3,11 +3,8 @@
 /**
  * Abstract class representing Definition cache managers that implements
  * useful common methods and is a factory.
- * @todo Create a separate maintenance file advanced users can use to
- *       cache their custom HTMLDefinition, which can be loaded
- *       via a configuration directive
- * @todo Implement memcached
  */
+
 abstract class HTMLPurifier_DefinitionCache
 {
     /**
@@ -118,7 +115,7 @@ abstract class HTMLPurifier_DefinitionCache
 
     /**
      * Clears all expired (older version or revision) objects from cache
-     * @note Be carefuly implementing this method as flush. Flush must
+     * @note Be careful implementing this method as flush. Flush must
      *       not interfere with other Definition types, and cleanup()
      *       should not be repeatedly called by userland code.
      * @param HTMLPurifier_Config $config

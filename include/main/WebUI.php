@@ -8,11 +8,18 @@
  * All Rights Reserved.
  * Contributor(s): YetiForce.com
  * ********************************************************************************** */
+require_once 'vendor/yii/Yii.php';
 require_once 'include/ConfigUtils.php';
 require_once 'include/utils/utils.php';
 require_once 'include/utils/CommonUtils.php';
 require_once 'include/Loader.php';
 vimport('include.runtime.EntryPoint');
+\App\Debuger::init();
+\App\Cache::init();
+App\Db::$connectCache = AppConfig::performance('ENABLE_CACHING_DB_CONNECTION');
+App\Log::$logToProfile = Yii::$logToProfile = AppConfig::debug('LOG_TO_PROFILE');
+App\Log::$logToConsole = AppConfig::debug('LOG_TO_CONSOLE');
+App\Log::$logToFile = AppConfig::debug('LOG_TO_FILE');
 
 class Vtiger_WebUI extends Vtiger_EntryPoint
 {
@@ -40,12 +47,13 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 	 * Function to get the instance of the logged in User
 	 * @return Users object
 	 */
-	function getLogin()
+	public function getLogin()
 	{
 		$user = parent::getLogin();
-		if (!$user) {
-			$userid = Vtiger_Session::get('AUTHUSERID', $_SESSION['authenticated_user_id']);
-			if ($userid && AppConfig::main('application_unique_key') == Vtiger_Session::get('app_unique_key')) {
+		if (!$user && Vtiger_Session::has('authenticated_user_id')) {
+			$userid = Vtiger_Session::get('authenticated_user_id');
+			if ($userid && AppConfig::main('application_unique_key') === Vtiger_Session::get('app_unique_key')) {
+				\App\User::getCurrentUserModel();
 				$user = CRMEntity::getInstance('Users');
 				$user->retrieveCurrentUserInfoFromFile($userid);
 				$this->setLogin($user);
@@ -90,7 +98,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 		$handler->postProcess($request);
 	}
 
-	function isInstalled()
+	public function isInstalled()
 	{
 		$dbconfig = AppConfig::main('dbconfig');
 		if (empty($dbconfig) || empty($dbconfig['db_name']) || $dbconfig['db_name'] == '_DBC_TYPE_') {
@@ -99,21 +107,19 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 		return true;
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
-		$log = LoggerManager::getLogger('System');
-		vglobal('log', $log);
-		if (AppConfig::main('forceSSL') && !vtlib\Functions::getBrowserInfo()->https) {
+		if (AppConfig::main('forceSSL') && !\App\RequestUtil::getBrowserInfo()->https) {
 			header("Location: https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", true, 301);
 		}
-		if ($this->isInstalled() === false) {
+		if (!$this->isInstalled()) {
 			header('Location:install/Install.php');
-			exit;
 		}
-		$request_URL = (vtlib\Functions::getBrowserInfo()->https ? 'https' : 'http') . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-		if (AppConfig::main('forceRedirect') && stripos($request_URL, AppConfig::main('site_URL')) !== 0) {
-			header('Location: ' . AppConfig::main('site_URL'), true, 301);
-			exit;
+		if (AppConfig::main('forceRedirect')) {
+			$requestUrl = (\App\RequestUtil::getBrowserInfo()->https ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+			if (stripos($requestUrl, AppConfig::main('site_URL')) !== 0) {
+				header('Location: ' . AppConfig::main('site_URL'), true, 301);
+			}
 		}
 		Vtiger_Session::init();
 
@@ -123,7 +129,6 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			require_once('libraries/csrf-magic/csrf-magic.php');
 			require_once('config/csrf_config.php');
 		}
-		// TODO - Get rid of global variable $current_user
 		// common utils api called, depend on this variable right now
 		$currentUser = $this->getLogin();
 		vglobal('current_user', $currentUser);
@@ -135,12 +140,16 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 
 		if ($currentUser && $qualifiedModuleName) {
 			$moduleLanguageStrings = Vtiger_Language_Handler::getModuleStringsFromFile($currentLanguage, $qualifiedModuleName);
-			vglobal('mod_strings', $moduleLanguageStrings['languageStrings']);
+			if (isset($moduleLanguageStrings['languageStrings'])) {
+				vglobal('mod_strings', $moduleLanguageStrings['languageStrings']);
+			}
 		}
 
 		if ($currentUser) {
 			$moduleLanguageStrings = Vtiger_Language_Handler::getModuleStringsFromFile($currentLanguage);
-			vglobal('app_strings', $moduleLanguageStrings['languageStrings']);
+			if (isset($moduleLanguageStrings['languageStrings'])) {
+				vglobal('app_strings', $moduleLanguageStrings['languageStrings']);
+			}
 		}
 
 		$view = $request->get('view');
@@ -156,8 +165,6 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 						$qualifiedModuleName = $defaultModule;
 						$view = 'List';
 						if ($module == 'Calendar') {
-							// To load MyCalendar instead of list view for calendar
-							//TODO: see if it has to enhanced and get the default view from module model
 							$view = 'Calendar';
 						}
 					} else {
@@ -167,7 +174,7 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 					}
 				} else {
 					$module = 'Users';
-					$qualifiedModuleName = 'Settings:Users';
+					$qualifiedModuleName = $module;
 					$view = 'Login';
 				}
 				$request->set('module', $module);
@@ -186,6 +193,9 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 			}
 			define('_PROCESS_TYPE', $componentType);
 			define('_PROCESS_NAME', $componentName);
+			if ($qualifiedModuleName && stripos($qualifiedModuleName, 'Settings') === 0 && empty($currentUser)) {
+				header('Location: ' . AppConfig::main('site_URL'), true);
+			}
 			$handlerClass = Vtiger_Loader::getComponentClassName($componentType, $componentName, $qualifiedModuleName);
 			$handler = new $handlerClass();
 			if ($handler) {
@@ -198,7 +208,6 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 					$this->checkLogin($request);
 				}
 
-				//TODO : Need to review the design as there can potential security threat
 				$skipList = ['Users', 'Home', 'CustomView', 'Import', 'Export', 'Inventory', 'Vtiger', 'Migration', 'Install', 'ModTracker', 'CustomerPortal', 'WSAPP'];
 
 				if (!in_array($module, $skipList) && stripos($qualifiedModuleName, 'Settings') === false) {
@@ -223,16 +232,18 @@ class Vtiger_WebUI extends Vtiger_EntryPoint
 				throw new \Exception\AppException(vtranslate('LBL_HANDLER_NOT_FOUND'));
 			}
 		} catch (Exception $e) {
-			$log->error($e->getMessage() . ' => ' . $e->getFile() . ':' . $e->getLine());
+			\App\Log::error($e->getMessage() . ' => ' . $e->getFile() . ':' . $e->getLine());
 			$tpl = 'OperationNotPermitted.tpl';
 			if ($e instanceof \Exception\NoPermittedToRecord || $e instanceof WebServiceException) {
 				$tpl = 'NoPermissionsForRecord.tpl';
 			}
-
 			\vtlib\Functions::throwNewException($e->getMessage(), false, $tpl);
 			if (AppConfig::debug('DISPLAY_DEBUG_BACKTRACE')) {
-				echo '<pre>' . $e->getTraceAsString() . '</pre>';
+				echo '<pre>' . str_replace(ROOT_DIRECTORY . DIRECTORY_SEPARATOR, '', $e->getTraceAsString()) . '</pre>';
 				$response = false;
+			}
+			if (AppConfig::main('systemMode') === 'test') {
+				throw $e;
 			}
 		}
 
@@ -250,7 +261,7 @@ if (AppConfig::debug('EXCEPTION_ERROR_HANDLER')) {
 		if (\AppConfig::debug('EXCEPTION_ERROR_TO_FILE')) {
 			$file = 'cache/logs/errors.log';
 			$content = print_r($msg, true);
-			$content .= PHP_EOL . \vtlib\Functions::getBacktrace();
+			$content .= PHP_EOL . \App\Debuger::getBacktrace();
 			file_put_contents($file, $content . PHP_EOL, FILE_APPEND);
 		}
 		if (AppConfig::debug('EXCEPTION_ERROR_TO_SHOW')) {

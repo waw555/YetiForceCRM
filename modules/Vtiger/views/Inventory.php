@@ -9,14 +9,14 @@
 class Vtiger_Inventory_View extends Vtiger_IndexAjax_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('showDiscounts');
 		$this->exposeMethod('showTaxes');
 	}
 
-	function showDiscounts(Vtiger_Request $request)
+	public function showDiscounts(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$discountType = $request->get('discountType');
@@ -43,7 +43,11 @@ class Vtiger_Inventory_View extends Vtiger_IndexAjax_View
 		echo $viewer->view('InventoryDiscounts.tpl', $moduleName, true);
 	}
 
-	function showTaxes(Vtiger_Request $request)
+	/**
+	 * Function to show taxes
+	 * @param Vtiger_Request $request
+	 */
+	public function showTaxes(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$record = $request->get('record');
@@ -61,7 +65,7 @@ class Vtiger_Inventory_View extends Vtiger_IndexAjax_View
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('RECORD', $record);
 		$viewer->assign('RECORD_MODULE', $recordModule);
-		$viewer->assign('GLOBAL_TAXS', $inventoryModel->getGlobalTaxs());
+		$viewer->assign('GLOBAL_TAXES', Vtiger_Inventory_Model::getGlobalTaxes());
 		$viewer->assign('CURRENCY_SYMBOL', vtlib\Functions::getCurrencySymbolandRate($currency)['symbol']);
 		$viewer->assign('TOTAL_PRICE', $totalPrice);
 		$viewer->assign('CONFIG', $config);

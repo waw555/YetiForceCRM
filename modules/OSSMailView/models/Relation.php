@@ -13,7 +13,21 @@ class OSSMailView_Relation_Model extends Vtiger_Relation_Model
 	{
 		$return = false;
 		$db = PearDatabase::getInstance();
-		$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? AND crmid = ?';
+		CRMEntity::trackLinkedInfo($crmid);
+		$destinationModuleName = \App\Record::getType($crmid);
+		$data = [
+			'CRMEntity' => CRMEntity::getInstance($destinationModuleName),
+			'sourceModule' => $destinationModuleName,
+			'sourceRecordId' => $crmid,
+			'destinationModule' => 'OSSMailView',
+			'destinationRecordId' => $mailId
+		];
+		$eventHandler = new App\EventHandler();
+		$eventHandler->setModuleName($destinationModuleName);
+		$eventHandler->setParams($data);
+		$eventHandler->trigger('EntityBeforeLink');
+
+		$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? && crmid = ?';
 		$result = $db->pquery($query, [$mailId, $crmid]);
 		if ($db->getRowCount($result) == 0) {
 			if (!$date) {
@@ -27,7 +41,7 @@ class OSSMailView_Relation_Model extends Vtiger_Relation_Model
 			]);
 
 			if ($parentId = Users_Privileges_Model::getParentRecord($crmid)) {
-				$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? AND crmid = ?';
+				$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? && crmid = ?';
 				$result = $db->pquery($query, [$mailId, $parentId]);
 				if ($db->getRowCount($result) == 0) {
 					$db->insert('vtiger_ossmailview_relation', [
@@ -36,7 +50,7 @@ class OSSMailView_Relation_Model extends Vtiger_Relation_Model
 						'date' => $date
 					]);
 					if ($parentId = Users_Privileges_Model::getParentRecord($parentId)) {
-						$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? AND crmid = ?';
+						$query = 'SELECT * FROM vtiger_ossmailview_relation WHERE ossmailviewid = ? && crmid = ?';
 						$result = $db->pquery($query, [$mailId, $parentId]);
 						if ($db->getRowCount($result) == 0) {
 							$db->insert('vtiger_ossmailview_relation', [
@@ -50,6 +64,16 @@ class OSSMailView_Relation_Model extends Vtiger_Relation_Model
 			}
 			$return = true;
 		}
+		$eventHandler->trigger('EntityAfterLink');
 		return $return;
+	}
+
+	public function getAttachments()
+	{
+		$queryGenerator = $this->getQueryGenerator();
+		$queryGenerator->addJoin(['LEFT JOIN', 'vtiger_seattachmentsrel', 'vtiger_seattachmentsrel.crmid = vtiger_notes.notesid']);
+		$queryGenerator->addJoin(['LEFT JOIN', 'vtiger_attachments', 'vtiger_seattachmentsrel.attachmentsid = vtiger_attachments.attachmentsid']);
+		$queryGenerator->addJoin(['LEFT JOIN', 'vtiger_ossmailview_files', 'vtiger_ossmailview_files.documentsid = vtiger_notes.notesid']);
+		$queryGenerator->addNativeCondition(['vtiger_ossmailview_files.ossmailviewid' => $this->get('parentRecord')->getId()]);
 	}
 }

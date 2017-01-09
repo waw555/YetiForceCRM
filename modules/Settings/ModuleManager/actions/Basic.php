@@ -12,7 +12,7 @@
 class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('updateModuleStatus');
@@ -23,7 +23,7 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 		$this->exposeMethod('deleteModule');
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$mode = $request->getMode();
 		if (!empty($mode)) {
@@ -36,16 +36,17 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 	{
 		$moduleName = $request->get('forModule');
 		$updateStatus = $request->get('updateStatus');
-
 		$moduleManagerModel = new Settings_ModuleManager_Module_Model();
-
-		if ($updateStatus == 'true') {
-			$moduleManagerModel->enableModule($moduleName);
-		} else {
-			$moduleManagerModel->disableModule($moduleName);
-		}
-
 		$response = new Vtiger_Response();
+		try {
+			if ($request->getBoolean('updateStatus')) {
+				$moduleManagerModel->enableModule($moduleName);
+			} else {
+				$moduleManagerModel->disableModule($moduleName);
+			}
+		} catch (\Exception\NotAllowedMethod $e) {
+			$response->setError($e->getMessage());
+		}
 		$response->emit();
 	}
 
@@ -55,7 +56,7 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 		$uploadFile = $request->get('module_import_file');
 		$uploadDir = Settings_ModuleManager_Module_Model::getUploadDirectory();
 		$uploadFileName = "$uploadDir/$uploadFile";
-		checkFileAccess($uploadFileName);
+		vtlib\Deprecated::checkFileAccess($uploadFileName);
 
 		$importType = $request->get('module_import_type');
 		if (strtolower($importType) == 'language') {
@@ -67,7 +68,8 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 		}
 
 		$package->import($uploadFileName);
-		checkFileAccessForDeletion($uploadFileName);
+
+		\vtlib\Deprecated::checkFileAccessForDeletion($uploadFileName);
 		unlink($uploadFileName);
 
 		$result = array('success' => true, 'importModuleName' => $importModuleName);
@@ -82,7 +84,7 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 		$uploadFile = $request->get('module_import_file');
 		$uploadDir = Settings_ModuleManager_Module_Model::getUploadDirectory();
 		$uploadFileName = "$uploadDir/$uploadFile";
-		checkFileAccess($uploadFileName);
+		vtlib\Deprecated::checkFileAccess($uploadFileName);
 
 		$importType = strtolower($request->get('module_import_type'));
 		if ($importType == 'language') {
@@ -99,7 +101,7 @@ class Settings_ModuleManager_Basic_Action extends Settings_Vtiger_IndexAjax_View
 			$package->update(vtlib\Module::getInstance($importModuleName), $uploadFileName);
 		}
 
-		checkFileAccessForDeletion($uploadFileName);
+		\vtlib\Deprecated::checkFileAccessForDeletion($uploadFileName);
 		unlink($uploadFileName);
 
 		$result = array('success' => true, 'importModuleName' => $importModuleName);

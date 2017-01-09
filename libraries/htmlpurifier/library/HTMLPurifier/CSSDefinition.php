@@ -370,6 +370,19 @@ class HTMLPurifier_CSSDefinition extends HTMLPurifier_Definition
         );
         $this->info['page-break-inside'] = new HTMLPurifier_AttrDef_Enum(array('auto', 'avoid'));
 
+        $border_radius = new HTMLPurifier_AttrDef_CSS_Composite(
+            array(
+                new HTMLPurifier_AttrDef_CSS_Percentage(true), // disallow negative
+                new HTMLPurifier_AttrDef_CSS_Length('0') // disallow negative
+            ));
+
+        $this->info['border-top-left-radius'] =
+        $this->info['border-top-right-radius'] =
+        $this->info['border-bottom-right-radius'] =
+        $this->info['border-bottom-left-radius'] = new HTMLPurifier_AttrDef_CSS_Multiple($border_radius, 2);
+        // TODO: support SLASH syntax
+        $this->info['border-radius'] = new HTMLPurifier_AttrDef_CSS_Multiple($border_radius, 4);
+
     }
 
     /**
@@ -436,8 +449,6 @@ class HTMLPurifier_CSSDefinition extends HTMLPurifier_Definition
      * Performs extra config-based processing. Based off of
      * HTMLPurifier_HTMLDefinition.
      * @param HTMLPurifier_Config $config
-     * @todo Refactor duplicate elements into common class (probably using
-     *       composition, not inheritance).
      */
     protected function setupConfigStuff($config)
     {

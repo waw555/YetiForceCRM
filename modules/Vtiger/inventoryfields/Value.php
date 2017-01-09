@@ -12,7 +12,7 @@ class Vtiger_Value_InventoryField extends Vtiger_Basic_InventoryField
 	protected $name = 'Value';
 	protected $defaultLabel = 'LBL_VALUE';
 	protected $columnName = 'value';
-	protected $dbType = 'varchar(255)';
+	protected $dbType = 'string';
 	protected $onlyOne = false;
 
 	/**
@@ -24,7 +24,7 @@ class Vtiger_Value_InventoryField extends Vtiger_Basic_InventoryField
 	{
 		$mapDetail = $this->getMapDetail(true);
 		if ($mapDetail) {
-			$value = $mapDetail->getDisplayValue($value,false,false,true);
+			$value = $mapDetail->getDisplayValue($value, false, false, true);
 		}
 		return $value;
 	}

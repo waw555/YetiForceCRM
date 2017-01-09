@@ -31,7 +31,7 @@ class Calendar_QuickCreateAjax_View extends Vtiger_QuickCreateAjax_View
 			foreach ($requestFieldList as $fieldName => $fieldValue) {
 				$fieldModel = $fieldList[$fieldName];
 				if ($fieldModel->isEditable()) {
-					$recordModel->set($fieldName, $fieldModel->getDBInsertValue($fieldValue));
+					$recordModel->set($fieldName, $fieldModel->getDBValue($fieldValue));
 				}
 			}
 
@@ -40,16 +40,18 @@ class Calendar_QuickCreateAjax_View extends Vtiger_QuickCreateAjax_View
 			$fieldValues = [];
 			$sourceRelatedField = $moduleModel->getValuesFromSource($request);
 			foreach ($sourceRelatedField as $fieldName => &$fieldValue) {
-				
+
 				if (isset($recordStructure[$fieldName])) {
 					$fieldvalue = $recordStructure[$fieldName]->get('fieldvalue');
 					if (empty($fieldvalue)) {
 						$recordStructure[$fieldName]->set('fieldvalue', $fieldValue);
 					}
 				} else {
-					$fieldModel = $fieldList[$fieldName];
-					$fieldModel->set('fieldvalue', $fieldValue);
-					$fieldValues[$fieldName] = $fieldModel;
+					if (isset($fieldList[$fieldName])) {
+						$fieldModel = $fieldList[$fieldName];
+						$fieldModel->set('fieldvalue', $fieldValue);
+						$fieldValues[$fieldName] = $fieldModel;
+					}
 				}
 			}
 
@@ -61,9 +63,9 @@ class Calendar_QuickCreateAjax_View extends Vtiger_QuickCreateAjax_View
 		$picklistDependencyDatasource = Vtiger_DependencyPicklist::getPicklistDependencyDatasource($moduleName);
 
 		$viewer = $this->getViewer($request);
-		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', \includes\utils\Json::encode($picklistDependencyDatasource));
+		$viewer->assign('PICKIST_DEPENDENCY_DATASOURCE', \App\Json::encode($picklistDependencyDatasource));
 		$mappingRelatedField = Vtiger_ModulesHierarchy_Model::getRelationFieldByHierarchy($moduleName);
-		$viewer->assign('MAPPING_RELATED_FIELD', \includes\utils\Json::encode($mappingRelatedField));
+		$viewer->assign('MAPPING_RELATED_FIELD', \App\Json::encode($mappingRelatedField));
 		$viewer->assign('SOURCE_RELATED_FIELD', $fieldValues);
 		$viewer->assign('THREEDAYSAGO', date('Y-n-j', strtotime('-3 day')));
 		$viewer->assign('TWODAYSAGO', date('Y-n-j', strtotime('-2 day')));

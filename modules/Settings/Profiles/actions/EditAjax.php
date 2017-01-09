@@ -11,7 +11,7 @@
 Class Settings_Profiles_EditAjax_Action extends Settings_Vtiger_IndexAjax_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('checkDuplicate');
@@ -30,9 +30,7 @@ Class Settings_Profiles_EditAjax_Action extends Settings_Vtiger_IndexAjax_View
 	{
 		$profileName = $request->get('profilename');
 		$recordId = $request->get('record');
-
-		$recordModel = Settings_Profiles_Record_Model::getInstanceByName($profileName, false, array($recordId));
-
+		$recordModel = Settings_Profiles_Record_Model::getInstanceByName($profileName, false, $recordId);
 		$response = new Vtiger_Response();
 		if (!empty($recordModel)) {
 			$response->setResult(array('success' => true, 'message' => vtranslate('LBL_DUPLICATES_EXIST', $request->getModule(false))));

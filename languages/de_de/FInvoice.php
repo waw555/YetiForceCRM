@@ -4,6 +4,7 @@
  * @package YetiForce.Language
  * @license licenses/License.html
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 $languageStrings = [
 	'FInvoice' => 'Rechnungen',
@@ -23,9 +24,18 @@ $languageStrings = [
 	'FL_TOTAL' => 'Gesamt',
 	'FL_GROSS' => 'Brutto',
 	'FL_STATUS' => 'Status',
+	'FL_PAYMENT_STATUS' => 'Zahlungsstatus',
+	'FL_INVOICE_TYPE' => 'Rechnungstyp',
 	//PICKLIST VALUES
 	'PLL_TRANSFER' => 'Überweisung',
+	'PLL_WIRE_TRANSFER' => 'Banküberweisung',
 	'PLL_CASH' => 'Bar',
+	'PLL_AWAITING_PAYMENT' => 'Zahlung erwartet',
+	'PLL_PARTIALLY_PAID' => 'Teilweise gezahlt',
+	'PLL_FULLY_PAID' => 'Vollstöndig gezahlt',
+	'PLL_DOMESTIC_INVOICE' => 'Inländische Rechnung',
+	'PLL_FOREIGN_INVOICE' => 'Fremdwährungsrechnung',
+	'PLL_IC_INVOICE' => 'Gemeinschaftliche Warenrechnung',
 	//OTHERS
 	'LBL_YEAR' => 'Jahr',
 ];

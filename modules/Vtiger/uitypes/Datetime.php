@@ -13,7 +13,7 @@ class Vtiger_Datetime_UIType extends Vtiger_Date_UIType
 
 	/**
 	 * Function to get the Template name for the current UI Type object
-	 * @return <String> - Template Name
+	 * @return string - Template Name
 	 */
 	public function getTemplateName()
 	{
@@ -36,7 +36,7 @@ class Vtiger_Datetime_UIType extends Vtiger_Date_UIType
 	/**
 	 * Function to get Date and Time value for Display
 	 * @param <type> $date
-	 * @return <String>
+	 * @return string
 	 */
 	public static function getDisplayDateTimeValue($date)
 	{
@@ -47,7 +47,7 @@ class Vtiger_Datetime_UIType extends Vtiger_Date_UIType
 	/**
 	 * Function to get Date and Time value for Display
 	 * @param <type> $date
-	 * @return <String>
+	 * @return string
 	 */
 	public static function getDBDateTimeValue($date)
 	{
@@ -56,9 +56,20 @@ class Vtiger_Datetime_UIType extends Vtiger_Date_UIType
 	}
 
 	/**
+	 * Function to get the DB Insert Value, for the current field type with given User Value
+	 * @param mixed $value
+	 * @param \Vtiger_Record_Model $recordModel
+	 * @return mixed
+	 */
+	public function getDBValue($value, $recordModel = false)
+	{
+		return parent::getDBValue($value, $recordModel);
+	}
+
+	/**
 	 * Function to get the datetime value in user preferred hour format
 	 * @param <type> $dateTime
-	 * @return <String> date and time with hour format
+	 * @return string date and time with hour format
 	 */
 	public static function getDateTimeValue($dateTime)
 	{

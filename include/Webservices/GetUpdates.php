@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * *********************************************************************************** */
 require_once 'include/Webservices/Utils.php';
 require_once 'include/Webservices/ModuleTypes.php';
@@ -14,8 +15,10 @@ require_once 'include/Webservices/DescribeObject.php';
 
 function vtws_sync($mtime, $elementType, $syncType, $user)
 {
-	global $adb, $recordString, $modifiedTimeString;
+	return 'Currently not supported';
 
+	global $recordString, $modifiedTimeString;
+	$adb = PearDatabase::getInstance();
 	$numRecordsLimit = 100;
 	$ignoreModules = array("Users");
 	$typed = true;
@@ -39,7 +42,7 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 		$userAndGroupSync = true;
 	}
 
-	if ($applicationSync && !is_admin($user)) {
+	if ($applicationSync && !\vtlib\Functions::userIsAdministrator($user)) {
 		throw new WebServiceException(WebServiceErrorCode::$ACCESSDENIED, "Only admin users can perform application sync");
 	}
 
@@ -57,7 +60,7 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 	// End
 
 
-	if (!isset($elementType) || $elementType == '' || $elementType == null) {
+	if (!isset($elementType) || $elementType == '' || $elementType === null) {
 		$typed = false;
 	}
 
@@ -116,11 +119,12 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 		$params = array_merge($params, $ownerIds);
 	}
 
-	$q .=" order by modifiedtime limit $numRecordsLimit";
+	$q .= " order by modifiedtime limit $numRecordsLimit";
 	$result = $adb->pquery($q, $params);
 
 	$modTime = [];
-	for ($i = 0; $i < $adb->num_rows($result); $i++) {
+	$countResult = $adb->num_rows($result);
+	for ($i = 0; $i < $countResult; $i++) {
 		$modTime[] = $adb->query_result($result, $i, 'modifiedtime');
 	}
 	if (!empty($modTime)) {
@@ -155,7 +159,7 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 		// since not all fields present in delete condition will be present in the fieldnames of the module
 		foreach ($deleteColumnNames as $table_fieldName => $columnName) {
 			if (!in_array($columnName, $moduleFieldNames)) {
-				$selectClause .=", " . $table_fieldName;
+				$selectClause .= ", " . $table_fieldName;
 			}
 		}
 		if ($elementType == "Emails")
@@ -165,10 +169,10 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 
 		$fromClause .= " INNER JOIN (select modifiedtime, crmid,deleted,setype FROM $baseCRMTable WHERE setype=? and modifiedtime >? and modifiedtime<=?";
 		if (!$applicationSync) {
-			$fromClause.= 'and smownerid IN(' . generateQuestionMarks($ownerIds) . ')';
+			$fromClause .= 'and smownerid IN(' . generateQuestionMarks($ownerIds) . ')';
 			$params = array_merge($params, $ownerIds);
 		}
-		$fromClause.= ' ) vtiger_ws_sync ON (vtiger_crmentity.crmid = vtiger_ws_sync.crmid)';
+		$fromClause .= ' ) vtiger_ws_sync ON (vtiger_crmentity.crmid = vtiger_ws_sync.crmid)';
 		$q = $selectClause . " " . $fromClause;
 		$result = $adb->pquery($q, $params);
 		$recordDetails = [];
@@ -205,7 +209,7 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 		$params[] = $entityModule;
 	}
 	if (!$applicationSync) {
-		$q.='and smownerid IN(' . generateQuestionMarks($ownerIds) . ')';
+		$q .= 'and smownerid IN(' . generateQuestionMarks($ownerIds) . ')';
 		$params = array_merge($params, $ownerIds);
 	}
 
@@ -239,7 +243,6 @@ function vtws_sync($mtime, $elementType, $syncType, $user)
 
 function vtws_getSeconds($mtimeString)
 {
-	//TODO handle timezone and change time to gmt.
 	return strtotime($mtimeString);
 }
 
@@ -294,12 +297,5 @@ function getCalendarTypeCondition($elementType)
 function getSelectClauseFields($module, $moduleMeta, $user)
 {
 	$moduleFieldNames = $moduleMeta->getModuleFields();
-	$inventoryModules = getInventoryModules();
-	if (in_array($module, $inventoryModules)) {
-		$fields = vtws_describe('LineItem', $user);
-		foreach ($fields['fields'] as $field) {
-			unset($moduleFieldNames[$field['name']]);
-		}
-	}
 	return array_keys($moduleFieldNames);
 }

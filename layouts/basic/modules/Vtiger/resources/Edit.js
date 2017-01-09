@@ -392,7 +392,6 @@ jQuery.Class("Vtiger_Edit_Js", {
 					aDeferred.resolve(data);
 				},
 				function (error) {
-					//TODO : Handle error
 					aDeferred.reject();
 				}
 		)
@@ -975,7 +974,6 @@ jQuery.Class("Vtiger_Edit_Js", {
 					//If validation fails, form should submit again
 					document.progressLoader.progressIndicator({'mode': 'hide'});
 					editViewForm.removeData('submit');
-					// to avoid hiding of error message under the fixed nav bar
 					app.formAlignmentAfterValidation(editViewForm);
 				}
 			}
@@ -1100,7 +1098,6 @@ jQuery.Class("Vtiger_Edit_Js", {
 	loadCkEditorElement: function (noteContentElement) {
 		var customConfig = {};
 		if (noteContentElement.is(':visible')) {
-			noteContentElement.removeAttr('data-validation-engine');
 			if (noteContentElement.hasClass("ckEditorBasic")) {
 				customConfig.toolbar = 'Basic';
 			}
@@ -1397,30 +1394,6 @@ jQuery.Class("Vtiger_Edit_Js", {
 	registerValidationsFields: function (container) {
 		var thisInstance = this;
 		var params = app.validationEngineOptionsForRecord;
-		params.onValidationComplete = function (element, valid) {
-			if (valid) {
-				var ckEditorSource = container.find('.ckEditorSource');
-				if (ckEditorSource.length > 0) {
-					var ckEditorSourceId = ckEditorSource.attr('id');
-					var fieldInfo = ckEditorSource.data('fieldinfo');
-					var isMandatory = fieldInfo.mandatory;
-					var CKEditorInstance = CKEDITOR.instances[ckEditorSourceId];
-					if (jQuery.type(CKEditorInstance) !== 'undefined' && jQuery.type(CKEditorInstance.document) === 'object') {
-						var ckEditorValue = jQuery.trim(CKEditorInstance.document.getBody().getText());
-						if (isMandatory && (ckEditorValue.length === 0)) {
-							var ckEditorId = 'cke_' + ckEditorSourceId;
-							var message = app.vtranslate('JS_REQUIRED_FIELD');
-							jQuery('#' + ckEditorId).validationEngine('showPrompt', message, 'error', 'topLeft', true);
-							return false;
-						} else {
-							return valid;
-						}
-					}
-				}
-				return valid;
-			}
-			return valid
-		}
 		container.validationEngine(params);
 	},
 	checkReferencesField: function (container, clear) {

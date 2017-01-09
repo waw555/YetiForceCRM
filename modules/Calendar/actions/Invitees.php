@@ -1,4 +1,5 @@
 <?php
+/* {[The file is published on the basis of YetiForce Public License that can be found in the following directory: licenses/License.html]} */
 
 class Calendar_Invitees_Action extends Vtiger_Action_Controller
 {
@@ -6,21 +7,19 @@ class Calendar_Invitees_Action extends Vtiger_Action_Controller
 	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
-
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$userPrivilegesModel->hasModulePermission($moduleModel->getId())) {
+		if (!$userPrivilegesModel->hasModulePermission($moduleName)) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('find');
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$mode = $request->getMode();
 
@@ -36,26 +35,26 @@ class Calendar_Invitees_Action extends Vtiger_Action_Controller
 		if (empty($modules)) {
 			return [];
 		}
-		$rows = \includes\Record::findCrmidByLabel($value, $modules);
+		$rows = \App\Record::getCrmIdBySearchLabel($value, $modules);
 
 		$matchingRecords = $leadIdsList = [];
 		foreach ($rows as &$row) {
-			if ($row['moduleName'] === 'Leads') {
+			if ($row['setype'] === 'Leads') {
 				$leadIdsList[] = $row['crmid'];
 			}
 		}
 		$convertedInfo = Leads_Module_Model::getConvertedInfo($leadIdsList);
 		foreach ($rows as &$row) {
-			if ($row['moduleName'] === 'Leads' && $convertedInfo[$row['crmid']]) {
+			if ($row['setype'] === 'Leads' && $convertedInfo[$row['crmid']]) {
 				continue;
 			}
 			if (Users_Privileges_Model::isPermitted($row['moduleName'], 'DetailView', $row['crmid'])) {
-				$label = \includes\Record::getLabel($row['crmid']);
+				$label = \App\Record::getLabel($row['crmid']);
 				$matchingRecords[] = [
 					'id' => $row['crmid'],
-					'module' => $row['moduleName'],
-					'category' => vtranslate($row['moduleName'], $row['moduleName']),
-					'fullLabel' => vtranslate($row['moduleName'], $row['moduleName']) . ': ' . $label,
+					'module' => $row['setype'],
+					'category' => vtranslate($row['setype'], $row['setype']),
+					'fullLabel' => vtranslate($row['setype'], $row['setype']) . ': ' . $label,
 					'label' => $label
 				];
 			}

@@ -21,10 +21,10 @@ class Vtiger_Mobile_Model extends Vtiger_Base_Model
 			return $return;
 		}
 		$return = 0;
-
-		$adb = PearDatabase::getInstance();
-		$result = $adb->pquery('SELECT id FROM yetiforce_mobile_keys WHERE user = ? AND service = ?;', [$userId, 'pushcall']);
-		if ($adb->getRowCount($result)) {
+		$isExists = (new \App\Db\Query())->from('yetiforce_mobile_keys')
+			->where(['user' => $userId, 'service' => 'pushcall'])
+			->exists();
+		if ($isExists) {
 			$return = true;
 		}
 		Vtiger_Cache::set('checkPermissionForOutgoingCall', $userId, $return);
@@ -48,18 +48,18 @@ class Vtiger_Mobile_Model extends Vtiger_Base_Model
 		return $return;
 	}
 
-	public function getAllMobileKeys($service, $userid = false)
+	public static function getAllMobileKeys($service, $userid = false)
 	{
 		$adb = PearDatabase::getInstance();
 
 		$params = array('Active');
 		$sql = '';
 		if ($userid) {
-			$sql .= ' AND vtiger_users.id <> ?';
+			$sql .= ' && vtiger_users.id <> ?';
 			$params[] = $userid;
 		}
 		if ($service) {
-			$sql .= ' AND yetiforce_mobile_keys.service = ?';
+			$sql .= ' && yetiforce_mobile_keys.service = ?';
 			$params[] = $service;
 		}
 		$query = 'SELECT yetiforce_mobile_keys.*, 
@@ -67,7 +67,7 @@ class Vtiger_Mobile_Model extends Vtiger_Base_Model
 				FROM yetiforce_mobile_keys 
 				INNER JOIN vtiger_users ON vtiger_users.id = yetiforce_mobile_keys.user 
 				WHERE vtiger_users.status = ? %s';
-		$query = sprintf($query, getSqlForNameInDisplayFormat(['first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'], 'Users'), $sql);	
+		$query = sprintf($query, \vtlib\Deprecated::getSqlForNameInDisplayFormat(['first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'], 'Users'), $sql);
 		$result = $adb->pquery($query, $params);
 		$rows = $adb->num_rows($result);
 		$keys = [];

@@ -20,7 +20,7 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 	{
 		$uiType = $this->get('field')->get('uitype');
 		if ($uiType == 300) {
-			return vtlib_purifyForHtml($value);
+			return \App\Purifier::purifyHtml($value);
 		} else {
 			return nl2br($value);
 		}
@@ -28,10 +28,21 @@ class Vtiger_Text_UIType extends Vtiger_Base_UIType
 
 	/**
 	 * Function to get the Template name for the current UI Type Object
-	 * @return <String> - Template Name
+	 * @return string - Template Name
 	 */
 	public function getTemplateName()
 	{
 		return 'uitypes/Text.tpl';
+	}
+
+	/**
+	 * Function to get the DB Insert Value, for the current field type with given User Value
+	 * @param mixed $value
+	 * @param \Vtiger_Record_Model $recordModel
+	 * @return mixed
+	 */
+	public function getDBValue($value, $recordModel = false)
+	{
+		return \vtlib\Functions::fromHTML($value, true);
 	}
 }

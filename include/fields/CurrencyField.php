@@ -6,6 +6,7 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * ********************************************************************************** */
 
 class CurrencyField
@@ -20,60 +21,60 @@ class CurrencyField
 	 * Currency Format(3,3,3) or (2,2,3)
 	 * @var String
 	 */
-	var $currencyFormat = '123,456,789';
+	public $currencyFormat = '123,456,789';
 
 	/**
 	 * Currency Separator for example (comma, dot, hash)
 	 * @var String
 	 */
-	var $currencySeparator = ',';
+	public $currencySeparator = ',';
 
 	/**
 	 * Decimal Separator for example (dot, comma, space)
 	 * @var <type>
 	 */
-	var $decimalSeparator = '.';
+	public $decimalSeparator = '.';
 
 	/**
 	 * Number of Decimal Numbers
 	 * @var Integer
 	 */
-	var $numberOfDecimal = 3;
+	public $numberOfDecimal = 3;
 
 	/**
 	 * Currency Id
 	 * @var Integer
 	 */
-	var $currencyId = 1;
+	public $currencyId = 1;
 
 	/**
 	 * Currency Symbol
 	 * @var String
 	 */
-	var $currencySymbol;
+	public $currencySymbol;
 
 	/**
 	 * Currency Symbol Placement
 	 */
-	var $currencySymbolPlacement;
+	public $currencySymbolPlacement;
 
 	/**
 	 * Currency Conversion Rate
 	 * @var Number
 	 */
-	var $conversionRate = 1;
+	public $conversionRate = 1;
 
 	/**
 	 * Value to be converted
 	 * @param Number $value
 	 */
-	var $value = null;
+	public $value = null;
 
 	/**
 	 * Maximum Number Of Currency Decimals
 	 * @var Number
 	 */
-	var $maxNumberOfDecimals = 5;
+	public $maxNumberOfDecimals = 5;
 
 	/**
 	 * Constructor
@@ -91,7 +92,8 @@ class CurrencyField
 	 */
 	public function initialize($user = null)
 	{
-		global $current_user, $default_charset;
+		$default_charset = AppConfig::main('default_charset');
+		$current_user = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		if (empty($user)) {
 			$user = $current_user;
 		}
@@ -107,7 +109,7 @@ class CurrencyField
 		} else {
 			$this->currencyId = self::getDBCurrencyId();
 		}
-		$currencyRateAndSymbol = getCurrencySymbolandCRate($this->currencyId);
+		$currencyRateAndSymbol = \vtlib\Functions::getCurrencySymbolandRate($this->currencyId);
 		$this->currencySymbol = $currencyRateAndSymbol['symbol'];
 		$this->conversionRate = $currencyRateAndSymbol['rate'];
 		$this->currencySymbolPlacement = $user->currency_symbol_placement;
@@ -139,6 +141,23 @@ class CurrencyField
 		return ($negative) ? '-' . $value : $value;
 	}
 
+	public static function convertToUserFormatSymbol($value, $skipConversion = false, $currencySymbol = false, $skipFormatting = false)
+	{
+		// To support negative values
+		$negative = false;
+		if (stripos($value, '-') === 0) {
+			$negative = true;
+			$value = substr($value, 1);
+		}
+		$self = new self($value);
+		$formattedValue = $self->getDisplayValue(null, $skipConversion);
+		if ($currencySymbol === false) {
+			$currencySymbol = $self->currencySymbol;
+		}
+		$value = self::appendCurrencySymbol($formattedValue, $currencySymbol, $self->currencySymbolPlacement);
+		return ($negative) ? '-' . $value : $value;
+	}
+
 	/**
 	 * Function that converts the Number into Users Currency
 	 * @param Users $user
@@ -154,11 +173,14 @@ class CurrencyField
 		$this->initialize($user);
 
 		$value = $this->value;
-		if ($skipConversion == false) {
+		if (empty($value)) {
+			$value = 0;
+		}
+		if ($skipConversion === false) {
 			$value = self::convertFromDollar($value, $this->conversionRate);
 		}
 
-		if ($skipFormatting == false) {
+		if ($skipFormatting === false) {
 			$value = $this->_formatCurrencyValue($value);
 		}
 		return $this->currencyDecimalFormat($value, $user);
@@ -376,14 +398,12 @@ class CurrencyField
 			$currencySeparator = ' ';
 		if (empty($decimalSeparator))
 			$decimalSeparator = ' ';
-		$value = str_replace("$currencySeparator", "", $value);
-		$value = str_replace("$decimalSeparator", ".", $value);
-
-		if ($skipConversion == false) {
+		$value = str_replace($currencySeparator, '', $value);
+		$value = str_replace($decimalSeparator, '.', $value);
+		$value = preg_replace('/[^0-9\.]/', '', $value);
+		if ($skipConversion === false) {
 			$value = self::convertToDollar($value, $this->conversionRate);
 		}
-		//$value = round($value, $this->maxNumberOfDecimals);
-
 		return $value;
 	}
 
@@ -396,22 +416,22 @@ class CurrencyField
 	 */
 	public static function convertToDBFormat($value, $user = null, $skipConversion = false)
 	{
+		if (empty($value)) {
+			return 0;
+		}
 		$self = new self($value);
 		return $self->getDBInsertedValue($user, $skipConversion);
 	}
 
 	/**
 	 * Function to get the default CRM currency
-	 * @return Integer Default system currency id
+	 * @return integer Default system currency id
 	 */
 	public static function getDBCurrencyId()
 	{
-		$adb = PearDatabase::getInstance();
-
-		$result = $adb->pquery('SELECT id FROM vtiger_currency_info WHERE defaultid < 0', []);
-		$noOfRows = $adb->num_rows($result);
-		if ($noOfRows > 0) {
-			return $adb->query_result($result, 0, 'id');
+		$id = (new \App\Db\Query())->select('id')->from('vtiger_currency_info')->where(['<', 'defaultid', 0])->scalar();
+		if ($id) {
+			return $id;
 		}
 		return null;
 	}
@@ -438,13 +458,13 @@ class CurrencyField
 		return $amount * $conversionRate;
 	}
 
-	function currencyDecimalFormat($value, $user = null)
+	public function currencyDecimalFormat($value, $user = null)
 	{
 		$current_user = vglobal('current_user');
 		if (!$user) {
 			$user = $current_user;
 		}
-		if ($user->truncate_trailing_zeros == true) {
+		if ($user->truncate_trailing_zeros === true) {
 			if (strpos($value, $user->currency_decimal_separator) != 0) {
 				/**
 				 * We should trim extra zero's if only the value had decimal separator(Ex :- 1600.00)
@@ -453,18 +473,18 @@ class CurrencyField
 				$value = rtrim($value, '0');
 			}
 			if ($user->currency_decimal_separator == '&nbsp;')
-				$decimalSeperator = ' ';
+				$decimalSeparator = ' ';
 			else
-				$decimalSeperator = $user->currency_decimal_separator;
+				$decimalSeparator = $user->currency_decimal_separator;
 
-			$fieldValue = explode(decode_html($decimalSeperator), $value);
+			$fieldValue = explode(decode_html($decimalSeparator), $value);
 			if (strlen($fieldValue[1]) <= 1) {
 				if (strlen($fieldValue[1]) == 1) {
-					return $value = $fieldValue[0] . $decimalSeperator . $fieldValue[1];
+					return $value = $fieldValue[0] . $decimalSeparator . $fieldValue[1];
 				} else if (!strlen($fieldValue[1])) {
 					return $value = $fieldValue[0];
 				} else {
-					return $value = $fieldValue[0] . $decimalSeperator;
+					return $value = $fieldValue[0] . $decimalSeparator;
 				}
 			} else {
 				return preg_replace("/(?<=\\.[0-9])[0]+\$/", "", $value);

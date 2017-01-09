@@ -16,7 +16,7 @@ class Leads_LeadsCreated_Dashboard extends Vtiger_IndexAjax_View
 	 * @param Vtiger_Request $request
 	 * @return <Array> - List of Vtiger_JsScript_Model instances
 	 */
-	function getFooterScripts(Vtiger_Request $request)
+	public function getFooterScripts(Vtiger_Request $request)
 	{
 
 		$jsFileNames = array(
@@ -60,7 +60,7 @@ class Leads_LeadsCreated_Dashboard extends Vtiger_IndexAjax_View
 		$viewer->assign('DATA', $data);
 		$viewer->assign('CURRENTUSER', $currentUser);
 
-		$accessibleUsers = \includes\fields\Owner::getInstance('Leads', $currentUser)->getAccessibleUsersForModule();
+		$accessibleUsers = \App\Fields\Owner::getInstance('Leads', $currentUser)->getAccessibleUsersForModule();
 		$viewer->assign('ACCESSIBLE_USERS', $accessibleUsers);
 		$content = $request->get('content');
 		if (!empty($content)) {

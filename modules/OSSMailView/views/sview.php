@@ -9,10 +9,10 @@
  * All Rights Reserved.
  * *********************************************************************************************************************************** */
 
-Class OSSMailView_sview_View extends Vtiger_Index_View
+class OSSMailView_sview_View extends Vtiger_Index_View
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$recordId = $request->get('record');
@@ -24,7 +24,7 @@ Class OSSMailView_sview_View extends Vtiger_Index_View
 		return true;
 	}
 
-	public function preProcess(Vtiger_Request $request)
+	public function preProcess(Vtiger_Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
 	}
@@ -47,7 +47,7 @@ Class OSSMailView_sview_View extends Vtiger_Index_View
 		$sent = $recordModel->get('createdtime');
 
 		// pobierz załączniki
-		$userNameSql = getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
+		$userNameSql = \vtlib\Deprecated::getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 		$query = "SELECT case when (vtiger_users.user_name not like '') then $userNameSql else vtiger_groups.groupname end as user_name,
 				'Documents' ActivityType,vtiger_attachments.type  FileType,vtiger_crmentity.modifiedtime,
 				vtiger_seattachmentsrel.attachmentsid attachmentsid, vtiger_notes.notesid crmid, vtiger_notes.notecontent description,vtiger_notes.*
@@ -60,16 +60,14 @@ Class OSSMailView_sview_View extends Vtiger_Index_View
 				LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid= vtiger_users.id
 				LEFT JOIN vtiger_ossmailview_files ON vtiger_ossmailview_files.documentsid =vtiger_notes.notesid
 				WHERE vtiger_ossmailview_files.ossmailviewid = ?";
-		$params = array($record);
-		$result = $db->pquery($query, $params, true);
+		$result = $db->pquery($query, [$record], true);
 		$num = $db->num_rows($result);
 
-		$attachments = array();
+		$attachments = [];
 		for ($i = 0; $i < $num; $i++) {
 			$attachments[$i]['name'] = $db->query_result($result, $i, 'title');
 			$attachments[$i]['file'] = $db->query_result($result, $i, 'filename');
-			$attachments[$i]['id'] = $db->query_result($result, $i, 'attachmentsid');
-			$attachments[$i]['docid'] = $db->query_result($result, $i, 'crmid');
+			$attachments[$i]['id'] = $db->query_result($result, $i, 'crmid');
 		}
 
 		$viewer = $this->getViewer($request);
@@ -88,5 +86,3 @@ Class OSSMailView_sview_View extends Vtiger_Index_View
 		$viewer->view('sview.tpl', 'OSSMailView');
 	}
 }
-
-?>

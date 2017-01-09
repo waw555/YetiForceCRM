@@ -34,6 +34,9 @@ $languageStrings = [
 	'Home Phone' => 'Téléphone domicile',
 	'INTERNAL_MAIL_COMPOSER' => 'Composeur mail',
 	'Language' => 'Langue',
+	'FL_AVAILABLE' => 'Available',
+	'FL_AUTO_ASSIGN_RECORDS' => 'Auto assign records',
+	'FL_RECORD_LIMIT_IN_MODULE' => 'Record limit in module',
 	'LBL_ABOUT_ME' => 'A propos de moi',
 	'LBL_ACTIVE_USERS' => 'Utilisateurs actifs',
 	'LBL_ADD_RECORD' => 'Ajouter un enregistrement',
@@ -112,7 +115,6 @@ $languageStrings = [
 	'Street Address' => 'Adresse postale',
 	'Summary' => 'Résumé',
 	'Symbol Placement' => 'Positionnement des symboles ',
-	'Tag Cloud' => 'Nuage de Tag',
 	'Theme' => 'Théme',
 	'Time Zone' => 'Fuseau horaire',
 	'Title' => 'Titre',
@@ -313,14 +315,15 @@ $languageStrings = [
 	'PLL_POSTPONED' => 'Retardé',
 	'PLL_CANCELLED' => 'Annulé',
 	'PLL_COMPLETED' => 'Complété',
+	'LBL_SELECT_LAYOUT' => 'Select layout',
 	'LBL_SWITCH' => 'Echanger',
 	'LBL_SWITCH_USER' => 'Echanger utilisateur',
 	'LBL_SWITCH_TO_YOURSELF' => 'Echanger vers vous-même',
 ];
 
 $jsLanguageStrings = [
-	//Curency seperator validation messages
-	'JS_DECIMAL_SEPERATOR_AND_GROUPING_SEPERATOR_CANT_BE_SAME' => 'Le séparateur des décimales et des milliers ne peuvent être identiques.',
+	//Curency separator validation messages
+	'JS_DECIMAL_SEPARATOR_AND_GROUPING_SEPARATOR_CANT_BE_SAME' => 'Le séparateur des décimales et des milliers ne peuvent être identiques.',
 	'JS_ENTER_CONFIRMATION_PASSWORD' => 'Merci de saisir votre confirmation de mot de passe.',
 	'JS_ENTER_NEW_PASSWORD' => 'Saisir votre nouveau mot de passe.',
 	'JS_ENTER_OLD_PASSWORD' => 'Saisir votre ancien mot de passe.',

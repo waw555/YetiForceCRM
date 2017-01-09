@@ -26,14 +26,14 @@ Class Users_PreferenceEdit_View extends Vtiger_Edit_View
 				throw new \Exception\NoPermittedToRecord('LBL_PERMISSION_DENIED');
 			}
 		}
-		if (($currentUserModel->isAdminUser() == true || $currentUserModel->get('id') == $record)) {
+		if (($currentUserModel->isAdminUser() === true || $currentUserModel->get('id') == $record)) {
 			return true;
 		} else {
 			throw new \Exception\NoPermittedToRecord('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	function preProcessTplName(Vtiger_Request $request)
+	public function preProcessTplName(Vtiger_Request $request)
 	{
 		return 'UserEditViewPreProcess.tpl';
 	}
@@ -43,10 +43,9 @@ Class Users_PreferenceEdit_View extends Vtiger_Edit_View
 		if ($this->checkPermission($request)) {
 			$currentUser = Users_Record_Model::getCurrentUserModel();
 			$viewer = $this->getViewer($request);
-			if ($activeReminder = \includes\Modules::isModuleActive('Calendar')) {
-				$calendarModuleModel = Vtiger_Module_Model::getInstance('Calendar');
+			if ($activeReminder = \App\Module::isModuleActive('Calendar')) {
 				$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-				$activeReminder = $userPrivilegesModel->hasModulePermission($calendarModuleModel->getId());
+				$activeReminder = $userPrivilegesModel->hasModulePermission('Calendar');
 			}
 			$selectedModule = $request->getModule();
 			$companyDetails = Vtiger_CompanyDetails_Model::getInstanceById();
@@ -66,7 +65,7 @@ Class Users_PreferenceEdit_View extends Vtiger_Edit_View
 			$viewer->assign('HOME_MODULE_MODEL', $homeModuleModel);
 			$viewer->assign('MENU_HEADER_LINKS', $this->getMenuHeaderLinks($request));
 			$viewer->assign('SEARCHABLE_MODULES', Vtiger_Module_Model::getSearchableModules());
-			$viewer->assign('CHAT_ACTIVE', \includes\Modules::isModuleActive('AJAXChat'));
+			$viewer->assign('CHAT_ACTIVE', \App\Module::isModuleActive('AJAXChat'));
 			$viewer->assign('REMINDER_ACTIVE', $activeReminder);
 			$viewer->assign('SHOW_BODY_HEADER', $this->showBodyHeader());
 			//Additional parameters
@@ -79,13 +78,6 @@ Class Users_PreferenceEdit_View extends Vtiger_Edit_View
 			$viewer->assign('IS_PREFERENCE', true);
 			$viewer->assign('HTMLLANG', Vtiger_Language_Handler::getShortLanguageName());
 			$viewer->assign('LANGUAGE', $currentUser->get('language'));
-
-			$allUsers = Users_Record_Model::getAll(true);
-			$sharedUsers = Calendar_Module_Model::getCaledarSharedUsers($currentUser->id);
-			$sharedType = Calendar_Module_Model::getSharedType($currentUser->id);
-			$viewer->assign('ALL_USERS', $allUsers);
-			$viewer->assign('SHAREDUSERS', $sharedUsers);
-			$viewer->assign('SHARED_TYPE', $sharedType);
 			$viewer->assign('HEADER_SCRIPTS', $this->getHeaderScripts($request));
 			if ($display) {
 				$this->preProcessDisplay($request);
@@ -114,7 +106,7 @@ Class Users_PreferenceEdit_View extends Vtiger_Edit_View
 		$dayStartPicklistValues = Users_Record_Model::getDayStartsPicklistValues($recordStructureInstance->getStructure());
 
 		$viewer = $this->getViewer($request);
-		$viewer->assign("DAY_STARTS", \includes\utils\Json::encode($dayStartPicklistValues));
+		$viewer->assign("DAY_STARTS", \App\Json::encode($dayStartPicklistValues));
 		$viewer->assign('IMAGE_DETAILS', $recordModel->getImageDetails());
 		$viewer->assign('USER_MODEL', Users_Record_Model::getCurrentUserModel());
 

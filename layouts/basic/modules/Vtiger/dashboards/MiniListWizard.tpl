@@ -26,6 +26,12 @@
 				<table class="table table-bordered">
 					<tbody>
 						<tr>
+							<td class="fieldLabel alignMiddle textAlignCenter" nowrap>{'LBL_WIDGET_NAME'|vtranslate}</td>
+							<td class="fieldValue">
+								<input type="text" class="form-control" name="widgetTitle" value="">
+							</td>
+						</tr>
+						<tr>
 							<td class="fieldLabel alignMiddle textAlignCenter" nowrap>{'LBL_SELECT_MODULE'|vtranslate}</td>
 							<td class="fieldValue">
 								<select class="form-control" name="module">
@@ -73,8 +79,8 @@
 	{/foreach}
 {elseif $WIZARD_STEP eq 'step3'}
 	<option></option>
-	{foreach from=$LIST_VIEW_CONTROLLER->getListViewHeaderFields() item=FIELD key=FIELD_NAME}
-		<option value="{$FIELD_NAME}">{vtranslate($FIELD->getFieldLabelKey(),$SELECTED_MODULE)}</option>
+	{foreach from=$QUERY_GENERATOR->getListViewFields() item=FIELD key=FIELD_NAME}
+		<option value="{$FIELD_NAME}">{vtranslate($FIELD->getFieldLabel(),$SELECTED_MODULE)}</option>
 	{/foreach}
 {/if}
 {/strip}

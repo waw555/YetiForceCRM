@@ -15,17 +15,15 @@ class Calendar_Calendar_Action extends Vtiger_BasicAjax_Action
 	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
-
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission($moduleModel->getId());
+		$permission = $userPrivilegesModel->hasModulePermission($moduleName);
 
 		if (!$permission) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('getEvents');
@@ -87,7 +85,6 @@ class Calendar_Calendar_Action extends Vtiger_BasicAjax_Action
 					$due_date = $end['date'];
 					$time_end = $end['time'];
 					$recordModel->set('id', $recordId);
-					$recordModel->set('mode', 'edit');
 					$recordModel->set('date_start', $date_start);
 					$recordModel->set('due_date', $due_date);
 					if ($request->get('allDay') == 'true') {

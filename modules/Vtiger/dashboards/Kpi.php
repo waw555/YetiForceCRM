@@ -20,7 +20,6 @@ class Vtiger_Kpi_Dashboard extends Vtiger_IndexAjax_View
 		$moduleName = $request->getModule();
 		$linkId = $request->get('linkid');
 
-		//var_dump($request->get('createdtime'));
 		$kpiHelper = new Vtiger_Kpi_Helper($request);
 		$data = $kpiHelper->getData($request);
 		$widget = Vtiger_Widget_Model::getInstance($linkId, $currentUser->getId());
@@ -29,7 +28,6 @@ class Vtiger_Kpi_Dashboard extends Vtiger_IndexAjax_View
 		$viewer->assign('DTYPE', $request->get('type'));
 		$viewer->assign('DSERVICE', $request->get('service'));
 		$viewer->assign('DTIME', $request->get('time'));
-		//$viewer->assign('KPIHELPER', $kpiHelper);
 		$viewer->assign('WIDGET', $widget);
 		$viewer->assign('MODULE_NAME', $moduleName);
 		$viewer->assign('DATA', $data);

@@ -13,7 +13,7 @@ class Vtiger_Owner_UIType extends Vtiger_Base_UIType
 
 	/**
 	 * Function to get the Template name for the current UI Type object
-	 * @return <String> - Template Name
+	 * @return string - Template Name
 	 */
 	public function getTemplateName()
 	{
@@ -27,67 +27,106 @@ class Vtiger_Owner_UIType extends Vtiger_Base_UIType
 	 */
 	public function getDisplayValue($value, $record = false, $recordInstance = false, $rawText = false)
 	{
-		if ($rawText) {
-			return getOwnerName($value);
+		if (empty($value)) {
+			return '';
 		}
-		if (self::getOwnerType($value) === 'User') {
-			$userModel = Users_Record_Model::getCleanInstance('Users');
-			$userModel->set('id', $value);
+		$ownerName = \App\Fields\Owner::getLabel($value);
+		if ($rawText) {
+			return $ownerName;
+		}
+		if (\App\Fields\Owner::getType($value) === 'Users') {
+			$userModel = Users_Privileges_Model::getInstanceById($value);
+			$userModel->setModule('Users');
+			$ownerName = $userModel->getName();
+			if ($userModel->get('status') === 'Inactive') {
+				$ownerName = '<span class="redColor">' . $ownerName . '</span>';
+			}
 			$detailViewUrl = $userModel->getDetailViewUrl();
 			$currentUser = Users_Record_Model::getCurrentUserModel();
 			if (!$currentUser->isAdminUser() || $rawText) {
-				return getOwnerName($value);
+				return $ownerName;
 			}
 		} else {
 			$currentUser = Users_Record_Model::getCurrentUserModel();
 			if (!$currentUser->isAdminUser() || $rawText) {
-				return getOwnerName($value);
+				return $ownerName;
 			}
 			$recordModel = new Settings_Groups_Record_Model();
 			$recordModel->set('groupid', $value);
 			$detailViewUrl = $recordModel->getDetailViewUrl();
 		}
-		return "<a href=" . $detailViewUrl . ">" . getOwnerName($value) . "</a>";
+		return "<a href='" . $detailViewUrl . "'>$ownerName</a>";
+	}
+
+	/**
+	 * Function to get the Display Value in ListView, for the current field type with given DB Insert Value
+	 * @param mixed $value
+	 * @return string
+	 */
+	public function getListViewDisplayValue($value, $record = false, $recordInstance = false, $rawText = false)
+	{
+		$maxLengthText = $this->get('field')->get('maxlengthtext');
+		$ownerName = \App\Fields\Owner::getLabel($value);
+		if ($rawText) {
+			return \vtlib\Functions::textLength($ownerName, $maxLengthText);
+		}
+		if (\App\Fields\Owner::getType($value) === 'Users') {
+			$userModel = Users_Privileges_Model::getInstanceById($value);
+			$userModel->setModule('Users');
+			$ownerName = vtlib\Functions::textLength($userModel->getName(), $maxLengthText);
+			if ($userModel->get('status') === 'Inactive') {
+				$ownerName = '<span class="redColor">' . $ownerName . '</span>';
+			}
+			$detailViewUrl = $userModel->getDetailViewUrl();
+			$currentUser = Users_Record_Model::getCurrentUserModel();
+			if (!$currentUser->isAdminUser() || $rawText) {
+				return $ownerName;
+			}
+		} else {
+			$currentUser = Users_Record_Model::getCurrentUserModel();
+			if (!$currentUser->isAdminUser() || $rawText) {
+				return \vtlib\Functions::textLength($ownerName, $maxLengthText);
+			}
+			$recordModel = new Settings_Groups_Record_Model();
+			$recordModel->set('groupid', $value);
+			$detailViewUrl = $recordModel->getDetailViewUrl();
+		}
+		return "<a href='" . $detailViewUrl . "'>$ownerName</a>";
 	}
 
 	/**
 	 * Function to get Display value for RelatedList
-	 * @param <String> $value
-	 * @return <String>
+	 * @param string $value
+	 * @return string
 	 */
 	public function getRelatedListDisplayValue($value)
 	{
 		return $value;
 	}
 
-	/**
-	 * Function to know owner is either User or Group
-	 * @param <Integer> userId/GroupId
-	 * @return <String> User/Group
-	 */
-	public static function getOwnerType($id)
-	{
-		$db = PearDatabase::getInstance();
-
-		$result = $db->pquery('SELECT 1 FROM vtiger_users WHERE id = ?', array($id));
-		if ($db->num_rows($result) > 0) {
-			return 'User';
-		}
-		return 'Group';
-	}
-
 	public function getListSearchTemplateName()
 	{
 		return 'uitypes/OwnerFieldSearchView.tpl';
 	}
-	
+
 	public function isAjaxEditable()
 	{
 		$userPrivModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
 		$roleModel = Settings_Roles_Record_Model::getInstanceById($userPrivModel->get('roleid'));
-		if($roleModel->get('changeowner')){
+		if ($roleModel->get('changeowner')) {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Function to get the DB Insert Value, for the current field type with given User Value
+	 * @param mixed $value
+	 * @param \Vtiger_Record_Model $recordModel
+	 * @return mixed
+	 */
+	public function getDBValue($value, $recordModel = false)
+	{
+		return empty($value) ? \App\User::getCurrentUserId() : (int) $value;
 	}
 }

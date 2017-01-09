@@ -26,7 +26,8 @@ class GenerateRecords
 	private function generateChildRecords($templateId, $baseRecord, $relId)
 	{
 		$listTpl = $this->getListOfChildTpl($templateId);
-		for ($i = 0; $i < count($listTpl); $i++) {
+		$countListTpl = count($listTpl);
+		for ($i = 0; $i < $countListTpl; $i++) {
 			$moduleType = $this->templateModuleType($listTpl[$i]);
 
 			require_once "modules/$moduleType/$moduleType.php";
@@ -101,7 +102,8 @@ class GenerateRecords
 
 		$tpl = array();
 
-		for ($i = 0; $i < $db->num_rows($getListTplResult); $i++) {
+		$numRowsGetListTplResult = $db->num_rows($getListTplResult);
+		for ($i = 0; $i < $numRowsGetListTplResult; $i++) {
 			$tpl[] = $db->query_result($getListTplResult, $i, 'id_tpl');
 		}
 

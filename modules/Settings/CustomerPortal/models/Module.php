@@ -11,7 +11,7 @@
 class Settings_CustomerPortal_Module_Model extends Settings_Vtiger_Module_Model
 {
 
-	var $name = 'CustomerPortal';
+	public $name = 'CustomerPortal';
 
 	/**
 	 * Function to get Current portal user
@@ -19,11 +19,12 @@ class Settings_CustomerPortal_Module_Model extends Settings_Vtiger_Module_Model
 	 */
 	public function getCurrentPortalUser()
 	{
-		$db = PearDatabase::getInstance();
-
-		$result = $db->pquery("SELECT prefvalue FROM vtiger_customerportal_prefs WHERE prefkey = 'userid' AND tabid = 0", array());
-		if ($db->num_rows($result)) {
-			return $db->query_result($result, 0, 'prefvalue');
+		$dataReader = (new App\Db\Query())->select('prefvalue')
+			->from('vtiger_customerportal_prefs')
+			->where(['prefkey' => 'userid', 'tabid' => 0])
+			->createCommand()->query();
+		if ($dataReader->count()) {
+			return $dataReader->readColumn(0);
 		}
 		return false;
 	}
@@ -34,36 +35,33 @@ class Settings_CustomerPortal_Module_Model extends Settings_Vtiger_Module_Model
 	 */
 	public function getCurrentDefaultAssignee()
 	{
-		$db = PearDatabase::getInstance();
-
-		$result = $db->pquery("SELECT prefvalue FROM vtiger_customerportal_prefs WHERE prefkey = 'defaultassignee' AND tabid = 0", array());
-		if ($db->num_rows($result)) {
-			return $db->query_result($result, 0, 'prefvalue');
+		$dataReader = (new App\Db\Query())->select('prefvalue')
+			->from('vtiger_customerportal_prefs')
+			->where(['prefkey' => 'defaultassignee', 'tabid' => 0])
+			->createCommand()->query();
+		if ($dataReader->count()) {
+			return $dataReader->readColumn(0);
 		}
 		return false;
 	}
 
 	/**
 	 * Function to get list of portal modules
-	 * @return <Array> list of portal modules <Vtiger_Module_Model>
+	 * @return <Array> list of portal modules Vtiger_Module_Model
 	 */
 	public function getModulesList()
 	{
 		if (!$this->portalModules) {
-			$db = PearDatabase::getInstance();
-
-			$query = "SELECT vtiger_customerportal_tabs.*, vtiger_customerportal_prefs.prefvalue, vtiger_tab.name FROM vtiger_customerportal_tabs
-					INNER JOIN vtiger_customerportal_prefs ON vtiger_customerportal_prefs.tabid = vtiger_customerportal_tabs.tabid AND vtiger_customerportal_prefs.prefkey='showrelatedinfo'
-					INNER JOIN vtiger_tab ON vtiger_customerportal_tabs.tabid = vtiger_tab.tabid AND vtiger_tab.presence = 0 ORDER BY vtiger_customerportal_tabs.sequence";
-
-			$result = $db->pquery($query, array());
-			$rows = $db->num_rows($result);
-
-			for ($i = 0; $i < $rows; $i++) {
-				$rowData = $db->query_result_rowdata($result, $i);
-				$tabId = $rowData['tabid'];
+			$dataReader = (new App\Db\Query())->select(['vtiger_customerportal_tabs.*', 'vtiger_customerportal_prefs.prefvalue', 'vtiger_tab.name'])
+				->from('vtiger_customerportal_tabs')
+				->innerJoin('vtiger_customerportal_prefs', 'vtiger_customerportal_prefs.tabid = vtiger_customerportal_tabs.tabid AND vtiger_customerportal_prefs.prefkey = :pref', [':pref' => 'showrelatedinfo'])
+				->innerJoin('vtiger_tab', 'vtiger_tab.tabid = vtiger_customerportal_tabs.tabid AND vtiger_tab.presence = :pres', [':pres' => 0])
+				->orderBy('vtiger_customerportal_tabs.sequence')
+				->createCommand()->query();
+			while ($row = $dataReader->read()) {
+				$tabId = $row['tabid'];
 				$moduleModel = Vtiger_Module_Model::getInstance($tabId);
-				foreach ($rowData as $key => $value) {
+				foreach ($row as $key => $value) {
 					$moduleModel->set($key, $value);
 				}
 				$portalModules[$tabId] = $moduleModel;

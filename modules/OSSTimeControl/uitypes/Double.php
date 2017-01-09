@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 
  * @package YetiForce.uitypes
@@ -10,16 +11,19 @@ class OSSTimeControl_Double_UIType extends Vtiger_Double_UIType
 
 	/**
 	 * Function to get the Display Value, for the current field type with given DB Insert Value
-	 * @param <Object> $value
-	 * @return <Object>
+	 * @param string $value
+	 * @param int $record id record
+	 * @param Vtiger_Record_Model $recordInstance 
+	 * @param mixed $rawText
+	 * @return string
 	 */
 	public function getDisplayValue($value, $record = false, $recordInstance = false, $rawText = false)
 	{
-		if ($this->get('field')->getFieldName() == 'sum_time') {
-			$return = vtlib\Functions::decimalTimeFormat($value);
+		if ($this->get('field')->getFieldName() === 'sum_time') {
+			$return = vtlib\Functions::decimalTimeFormat((int) $value);
 			return $return['short'];
 		} else {
-			return decimalFormat($value);
+			return \vtlib\Functions::formatDecimal((int) $value);
 		}
 	}
 }

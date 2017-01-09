@@ -16,7 +16,7 @@
 						<div class="remindersNotice quickAction{if AppConfig::module('Calendar', 'AUTO_REFRESH_REMINDERS')} autoRefreshing{/if}">
 							<a class="btn btn-default btn-sm isBadge" title="{vtranslate('LBL_REMINDER',$MODULE)}" href="#">
 								<span class="glyphicon glyphicon-calendar" aria-hidden="true"></span>
-								<span class="badge hide">0</span>
+								<span class="badge bgDanger hide">0</span>
 							</a>
 						</div>
 					</div>
@@ -30,11 +30,11 @@
 						</div>
 					</div>
 				{/if}
-				{if Users_Privileges_Model::isPermitted('Dashboard', 'NotificationPreview')}
+				{if Users_Privileges_Model::isPermitted('Notification', 'DetailView')}
 					<div class="pull-right rightHeaderBtn">
 						<div class="notificationsNotice quickAction{if AppConfig::module('Home', 'AUTO_REFRESH_REMINDERS')} autoRefreshing{/if}">
 							<div class="btn-group">
-								<a class="btn btn-default btn-sm isBadge" title="{vtranslate('LBL_NOTIFICATIONS',$MODULE)}" href="index.php?module=Home&view=NotificationsList">
+								<a class="btn btn-default btn-sm isBadge" title="{vtranslate('LBL_NOTIFICATIONS',$MODULE)}" href="index.php?module=Notification&view=List">
 									<span class="glyphicon glyphicon-bell" aria-hidden="true"></span>
 									<span class="badge hide">0</span>
 								</a>
@@ -87,32 +87,34 @@
 						</div>
 					</div>
 				{/if}
-				<div class="pull-left selectSearch">
-					<div class="input-group globalSearchInput">
-						<span class="input-group-btn">
+				{if AppConfig::performance('GLOBAL_SEARCH')}
+					<div class="pull-left selectSearch">
+						<div class="input-group globalSearchInput">
+							<span class="input-group-btn">
 
-							<select class="chzn-select basicSearchModulesList form-control col-md-5" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
-								<option value="">{vtranslate('LBL_ALL_RECORDS', $MODULE_NAME)}</option>
-								{foreach key=SEARCHABLE_MODULE item=fieldObject from=$SEARCHABLE_MODULES}
-									{if isset($SEARCHED_MODULE) && $SEARCHED_MODULE eq $SEARCHABLE_MODULE && $SEARCHED_MODULE !== 'All'}
-										<option value="{$SEARCHABLE_MODULE}" selected>{vtranslate($SEARCHABLE_MODULE,$SEARCHABLE_MODULE)}</option>
-									{else}
-										<option value="{$SEARCHABLE_MODULE}">{vtranslate($SEARCHABLE_MODULE,$SEARCHABLE_MODULE)}</option>
-									{/if}
-								{/foreach}
-							</select>
-						</span>
-						<input type="text" class="form-control globalSearchValue" title="{vtranslate('LBL_GLOBAL_SEARCH')}" placeholder="{vtranslate('LBL_GLOBAL_SEARCH')}" results="10" />
-						<span class="input-group-btn">
-							<button class="btn btn-default searchIcon" type="button">
-								<span class="glyphicon glyphicon-search"></span>
-							</button>
-							<button class="btn btn-default globalSearch" title="{vtranslate('LBL_ADVANCE_SEARCH')}" type="button">
-								<span class="glyphicon glyphicon-th-large"></span>
-							</button>
-						</span>
+								<select class="chzn-select basicSearchModulesList form-control col-md-5" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
+									<option value="">{vtranslate('LBL_ALL_RECORDS', $MODULE_NAME)}</option>
+									{foreach key=SEARCHABLE_MODULE item=fieldObject from=$SEARCHABLE_MODULES}
+										{if isset($SEARCHED_MODULE) && $SEARCHED_MODULE eq $SEARCHABLE_MODULE && $SEARCHED_MODULE !== 'All'}
+											<option value="{$SEARCHABLE_MODULE}" selected>{vtranslate($SEARCHABLE_MODULE,$SEARCHABLE_MODULE)}</option>
+										{else}
+											<option value="{$SEARCHABLE_MODULE}">{vtranslate($SEARCHABLE_MODULE,$SEARCHABLE_MODULE)}</option>
+										{/if}
+									{/foreach}
+								</select>
+							</span>
+							<input type="text" class="form-control globalSearchValue" title="{vtranslate('LBL_GLOBAL_SEARCH')}" placeholder="{vtranslate('LBL_GLOBAL_SEARCH')}" results="10" />
+							<span class="input-group-btn">
+								<button class="btn btn-default searchIcon" type="button">
+									<span class="glyphicon glyphicon-search"></span>
+								</button>
+								<button class="btn btn-default globalSearch" title="{vtranslate('LBL_ADVANCE_SEARCH')}" type="button">
+									<span class="glyphicon glyphicon-th-large"></span>
+								</button>
+							</span>
+						</div>
 					</div>
-				</div>	
+				{/if}
 				<div class="pull-right rightHeaderBtnMenu">
 					<div class="quickAction">
 						<a class="btn btn-default btn-sm" href="#">
@@ -127,46 +129,50 @@
 						</a>
 					</div>
 				</div>
-				<div class="pull-left searchMenuBtn">
-					<div class="quickAction">
-						<a class="btn btn-default btn-sm" href="#">
-							<span aria-hidden="true" class="glyphicon glyphicon-search"></span>
-						</a>
+				{if AppConfig::performance('GLOBAL_SEARCH')}
+					<div class="pull-left searchMenuBtn">
+						<div class="quickAction">
+							<a class="btn btn-default btn-sm" href="#">
+								<span aria-hidden="true" class="glyphicon glyphicon-search"></span>
+							</a>
+						</div>
 					</div>
-				</div>
-				<div class="pull-right">
-					{assign var=CONFIG value=Settings_Mail_Config_Model::getConfig('mailIcon')}
-					{if $CONFIG['showMailIcon']=='true'}
-						{assign var=AUTOLOGINUSERS value=OSSMail_Autologin_Model::getAutologinUsers()}
-						{if count($AUTOLOGINUSERS) > 0}
-							{assign var=MAIN_MAIL value=OSSMail_Module_Model::getDefaultMailAccount($AUTOLOGINUSERS)}
-							<div class="headerLinksMails" id="OSSMailBoxInfo" {if $CONFIG['showNumberUnreadEmails']=='true'}data-numberunreademails="true" data-interval="{$CONFIG['timeCheckingMail']}"{/if}>
-								<div class="btn-group">
-									{if count($AUTOLOGINUSERS) eq 1}
-										<a type="button" class="btn btn-sm btn-default" title="{$MAIN_MAIL.username}" href="index.php?module=OSSMail&view=index">
-											<div class="hidden-xs">
-												{$ITEM.username}
-												<span class="mail_user_name">{$MAIN_MAIL.username}</span>
-												<span data-id="{$MAIN_MAIL.rcuser_id}" class="noMails"></span>
-											</div>
-											<div class="visible-xs-block">
-												<span class="glyphicon glyphicon-list-alt"></span>
-											</div>
-										</a>
-									{elseif $CONFIG['showMailAccounts']=='true'}
-										<select class="form-control" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
-											{foreach key=KEY item=ITEM from=$AUTOLOGINUSERS}
-												<option value="{$KEY}" {if $ITEM.active}selected{/if} data-id="{$KEY}" data-nomail="" class="noMails">
+				{/if}
+				{if !Settings_ModuleManager_Library_Model::checkLibrary('roundcube')}
+					<div class="pull-right">
+						{assign var=CONFIG value=Settings_Mail_Config_Model::getConfig('mailIcon')}
+						{if $CONFIG['showMailIcon']=='true' && App\Privilege::isPermitted('OSSMail')}
+							{assign var=AUTOLOGINUSERS value=OSSMail_Autologin_Model::getAutologinUsers()}
+							{if count($AUTOLOGINUSERS) > 0}
+								{assign var=MAIN_MAIL value=OSSMail_Module_Model::getDefaultMailAccount($AUTOLOGINUSERS)}
+								<div class="headerLinksMails" id="OSSMailBoxInfo" {if $CONFIG['showNumberUnreadEmails']=='true'}data-numberunreademails="true" data-interval="{$CONFIG['timeCheckingMail']}"{/if}>
+									<div class="btn-group">
+										{if count($AUTOLOGINUSERS) eq 1}
+											<a type="button" class="btn btn-sm btn-default" title="{$MAIN_MAIL.username}" href="index.php?module=OSSMail&view=index">
+												<div class="hidden-xs">
 													{$ITEM.username}
-												</option>
-											{/foreach}
-										</select>
-									{/if}
+													<span class="mail_user_name">{$MAIN_MAIL.username}</span>
+													<span data-id="{$MAIN_MAIL.rcuser_id}" class="noMails"></span>
+												</div>
+												<div class="visible-xs-block">
+													<span class="glyphicon glyphicon-list-alt"></span>
+												</div>
+											</a>
+										{elseif $CONFIG['showMailAccounts']=='true'}
+											<select class="form-control" title="{vtranslate('LBL_SEARCH_MODULE', $MODULE_NAME)}">
+												{foreach key=KEY item=ITEM from=$AUTOLOGINUSERS}
+													<option value="{$KEY}" {if $ITEM.active}selected{/if} data-id="{$KEY}" data-nomail="" class="noMails">
+														{$ITEM.username}
+													</option>
+												{/foreach}
+											</select>
+										{/if}
+									</div>
 								</div>
-							</div>
+							{/if}
 						{/if}
-					{/if}
-				</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>

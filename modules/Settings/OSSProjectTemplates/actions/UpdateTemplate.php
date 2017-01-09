@@ -12,12 +12,12 @@
 class Settings_OSSProjectTemplates_UpdateTemplate_Action extends Settings_Vtiger_Index_Action
 {
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 
 		$baseModuleName = $request->get('base_module');
 		$id = $request->get('tpl_id');
-		$db = PearDatabase::getInstance();
+		$db = App\Db::getInstance();
 
 		$settingsModuleModel = Settings_Vtiger_Module_Model::getInstance('Settings:OSSProjectTemplates');
 		$fieldTab = $settingsModuleModel->getConfigurationForModule($baseModuleName);
@@ -29,46 +29,50 @@ class Settings_OSSProjectTemplates_UpdateTemplate_Action extends Settings_Vtiger
 		if ($fieldTab && count($fieldTab)) {
 			foreach ($fieldTab as $key => $value) {
 				$valField = $request->get($key);
-				$sql = "UPDATE vtiger_oss_project_templates SET fld_val = ? WHERE id_tpl = ? AND fld_name = ? AND module = ?";
-
-				if (is_array($valField)) {
-					$db->pquery($sql, array(json_encode($valField), $id, $key, $baseModuleName), true);
-				} else {
-					$db->pquery($sql, array($valField, $id, $key, $baseModuleName), true);
-				}
-
+				$db->createCommand()
+					->update('vtiger_oss_project_templates', ['fld_val' => is_array($valField) ? json_encode($valField) : $valField], ['id_tpl' => $id, 'fld_name' => $key, 'module' => $baseModuleName])
+					->execute();
 				$dateDayInterval = $request->get($key . '_day');
 				$dateDayIntervalType = $request->get($key . '_day_type');
 
 				if ($dateDayInterval) {
-					$sql = "UPDATE vtiger_oss_project_templates SET fld_val = '$dateDayInterval' WHERE id_tpl = $id AND fld_name = '{$key}_day' AND module = '$baseModuleName'";
-					$db->query($sql, true);
-
-					$sql = "SELECT `fld_val` FROM `vtiger_oss_project_templates` WHERE `id_tpl` = $id AND `fld_name` = '{$key}_day' AND `module` = '$baseModuleName'";
-					$result = $db->query($sql, true);
-
-					if ($db->num_rows($result) == 0) {
-
-						$sql = "INSERT INTO vtiger_oss_project_templates VALUES ('', '{$key}_day', $dateDayInterval, $id, '$parent', '$baseModuleName' )";
-						$result = $db->query($sql, true);
+					$db->createCommand()->update('vtiger_oss_project_templates', ['fld_val' => $dateDayInterval], ['id_tpl' => $id, 'fld_name' => $key . '_day', 'module' => $baseModuleName])
+						->execute();
+					$isExists = (new \App\Db\Query())
+						->from('vtiger_oss_project_templates')
+						->where(['id_tpl' => $id, 'fld_name' => $key . '_day', 'module' => $baseModuleName])
+						->exists();
+					if (!$isExists) {
+						$db->createCommand()->insert('vtiger_oss_project_templates', [
+							'fld_name' => $key . '_day',
+							'fld_val' => $dateDayInterval,
+							'id_tpl' => $id,
+							'parent' => $parent,
+							'module' => $baseModuleName
+						])->execute();
 					}
 				}
 				if (!!$dateDayIntervalType) {
-					$sql = "DELETE FROM vtiger_oss_project_templates WHERE id_tpl = $id AND fld_name = '{$key}_day_type' AND module = '$baseModuleName'";
-					$db->query($sql, true);
-
-					//  $lastTplId = $this->getLastTplId($baseModuleName);
-					//  $parentTplId = vtlib\Functions::getSingleFieldValue('vtiger_oss_project_templates', 'parent', 'id_tpl', $id);
-					$sql = "INSERT INTO vtiger_oss_project_templates VALUES(NULL, '{$key}_day_type', '$dateDayIntervalType', $id, '$parent', '$baseModuleName')";
-					$db->query($sql, true);
+					$db->createCommand()
+						->delete('vtiger_oss_project_templates', ['id_tpl' => $id, 'fld_name' => $key . '_day_type', 'module' => $baseModuleName])
+						->execute();
+					$db->createCommand()->insert('vtiger_oss_project_templates', [
+							'fld_name' => $key . '_day_type',
+							'fld_val' => $dateDayIntervalType,
+							'id_tpl' => $id,
+							'parent' => $parent,
+							'module' => $baseModuleName
+						])->execute();
 				} else {
-					$sql = "DELETE FROM vtiger_oss_project_templates WHERE id_tpl = $id AND fld_name = '{$key}_day_type' AND module = '$baseModuleName'";
-					$db->query($sql, true);
+					$db->createCommand()
+						->delete('vtiger_oss_project_templates', ['id_tpl' => $id, 'fld_name' => $key . '_day_type', 'module' => $baseModuleName])
+						->execute();
 				}
 			}
 
-			$sql = "UPDATE vtiger_oss_project_templates SET fld_val = '{$request->get('tpl_name')}' WHERE id_tpl = $id AND fld_name = 'tpl_name'";
-			$db->query($sql, true);
+			$db->createCommand()
+				->update('vtiger_oss_project_templates', ['fld_val' => $request->get('tpl_name')], ['id_tpl' => $id, 'fld_name' => 'tpl_name'])
+				->execute();
 		}
 
 		$backView = $request->get('back_view');
@@ -77,12 +81,11 @@ class Settings_OSSProjectTemplates_UpdateTemplate_Action extends Settings_Vtiger
 		header("Location: index.php?module=OSSProjectTemplates&parent=Settings&view=" . $backView . '&tpl_id=' . $backIdTpl);
 	}
 
-	function getLastTplId($moduleName)
+	public function getLastTplId($moduleName)
 	{
-		$db = PearDatabase::getInstance();
-
-		$sql = "SELECT id_tpl FROM vtiger_oss_project_templates order by id_tpl desc limit 0,1";
-		$result = $db->query($sql, true);
-		return $db->query_result($result, 0, 'id_tpl');
+		return (new \App\Db\Query())->select(['id_tpl'])
+			->from('vtiger_oss_project_templates')
+			->orderBy(['id_tpl' => SORT_DESC])
+			->limit(1)->scalar();
 	}
 }

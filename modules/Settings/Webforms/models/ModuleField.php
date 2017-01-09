@@ -53,13 +53,13 @@ class Settings_Webforms_ModuleField_Model extends Vtiger_Field_Model
 
 		if ($this->getFieldDataType() == 'currency') {
 			$fieldInfo['currency_symbol'] = $currentUser->get('currency_symbol');
-			$fieldInfo['decimalSeperator'] = $currentUser->get('currency_decimal_separator');
-			$fieldInfo['groupSeperator'] = $currentUser->get('currency_grouping_separator');
+			$fieldInfo['decimalSeparator'] = $currentUser->get('currency_decimal_separator');
+			$fieldInfo['groupSeparator'] = $currentUser->get('currency_grouping_separator');
 		}
 
 		if ($this->getFieldDataType() == 'owner') {
-			$userList = \includes\fields\Owner::getInstance(false, $currentUser)->getAccessibleUsers();
-			$groupList = \includes\fields\Owner::getInstance(false, $currentUser)->getAccessibleGroups();
+			$userList = \App\Fields\Owner::getInstance(false, $currentUser)->getAccessibleUsers();
+			$groupList = \App\Fields\Owner::getInstance(false, $currentUser)->getAccessibleGroups();
 			$pickListValues = array();
 			$pickListValues[vtranslate('LBL_USERS', $this->getModuleName())] = $userList;
 			$pickListValues[vtranslate('LBL_GROUPS', $this->getModuleName())] = $groupList;
@@ -74,16 +74,16 @@ class Settings_Webforms_ModuleField_Model extends Vtiger_Field_Model
 		return $fieldInfo;
 	}
 
-	public function getPicklistValues()
+	public function getPicklistValues($skipCheckingRole = false)
 	{
 		$fieldDataType = $this->getFieldDataType();
 
 		if ($fieldDataType != 'picklist') {
-			return parent::getPicklistValues();
+			return parent::getPicklistValues($skipCheckingRole);
 		}
 		$pickListValues = array();
 		$pickListValues[""] = vtranslate("LBL_SELECT_OPTION", 'Settings:Webforms');
-		return ($pickListValues + parent::getPicklistValues());
+		return ($pickListValues + parent::getPicklistValues($skipCheckingRole));
 	}
 
 	/**

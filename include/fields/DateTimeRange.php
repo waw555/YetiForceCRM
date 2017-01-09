@@ -11,13 +11,13 @@ class DateTimeRange
 	 * @returns  $dateValue array in the following format
 	 *           $dateValue = Array(0=>$startdate,1=>$enddate)
 	 */
-	public static function getDateRangeByType($type, &$dateObject = null)
+	public static function getDateRangeByType($type, $dateObject = null)
 	{
-		$currentUser = Users_Record_Model::getCurrentUserModel();
-		$weekStartDay = $currentUser->get('dayoftheweek');
+		$currentUser = \App\User::getCurrentUserModel();
+		$weekStartDay = $currentUser->getDetail('dayoftheweek');
 
 		if (!$dateObject) {
-			$timeZone = $timezone = new DateTimeZone($currentUser->get('time_zone'));
+			$timeZone = $timezone = new DateTimeZone($currentUser->getDetail('time_zone'));
 			$dateObject = new DateTime();
 			$dateObject->setTimezone($timeZone);
 		} else if (is_string($dateObject)) {
@@ -117,6 +117,13 @@ class DateTimeRange
 				$dateValue[1] = $next7days;
 				break;
 
+			case 'next15days':
+				$dateObject->modify('+14 days');
+				$next15days = $dateObject->format('Y-m-d');
+				$dateValue[0] = $today;
+				$dateValue[1] = $next15days;
+				break;
+
 			case 'next30days':
 				$dateObject->modify('+29 days');
 				$next30days = $dateObject->format('Y-m-d');
@@ -149,6 +156,13 @@ class DateTimeRange
 				$dateObject->modify('-6 days');
 				$last7days = $dateObject->format('Y-m-d');
 				$dateValue[0] = $last7days;
+				$dateValue[1] = $today;
+				break;
+
+			case 'last15days':
+				$dateObject->modify('-14 days');
+				$last15days = $dateObject->format('Y-m-d');
+				$dateValue[0] = $last15days;
 				$dateValue[1] = $today;
 				break;
 
@@ -281,10 +295,10 @@ class DateTimeRange
 		if ($month <= 3) { // 1st Quarter - January - March
 			$quarter[0] = $dateObject->format('Y-01-01');
 			$quarter[1] = $dateObject->format('Y-03-31');
-		} else if ($month > 3 and $month <= 6) { // 2nd Quarter - April - June
+		} else if ($month > 3 && $month <= 6) { // 2nd Quarter - April - June
 			$quarter[0] = $dateObject->format('Y-04-01');
 			$quarter[1] = $dateObject->format('Y-06-30');
-		} else if ($month > 6 and $month <= 9) { // 3rd Quarter - July - September
+		} else if ($month > 6 && $month <= 9) { // 3rd Quarter - July - September
 			$quarter[0] = $dateObject->format('Y-07-01');
 			$quarter[1] = $dateObject->format('Y-09-30');
 		} else { // 4th Quarter - October - December
@@ -315,10 +329,10 @@ class DateTimeRange
 			$dateObject->modify('last year');
 			$quarter[0] = $dateObject->format('Y-10-01');
 			$quarter[1] = $dateObject->format('Y-12-31');
-		} else if ($month > 3 and $month <= 6) { // 2nd Quarter - April - June
+		} else if ($month > 3 && $month <= 6) { // 2nd Quarter - April - June
 			$quarter[0] = $dateObject->format('Y-01-01');
 			$quarter[1] = $dateObject->format('Y-03-31');
-		} else if ($month > 6 and $month <= 9) { // 3rd Quarter - July - September
+		} else if ($month > 6 && $month <= 9) { // 3rd Quarter - July - September
 			$quarter[0] = $dateObject->format('Y-04-01');
 			$quarter[1] = $dateObject->format('Y-06-30');
 		} else { // 4th Quarter - October - December
@@ -348,10 +362,10 @@ class DateTimeRange
 		if ($month <= 3) { // 1st Quarter - January - March
 			$quarter[0] = $dateObject->format('Y-04-01');
 			$quarter[1] = $dateObject->format('Y-06-30');
-		} else if ($month > 3 and $month <= 6) { // 2nd Quarter - April - June
+		} else if ($month > 3 && $month <= 6) { // 2nd Quarter - April - June
 			$quarter[0] = $dateObject->format('Y-07-01');
 			$quarter[1] = $dateObject->format('Y-09-30');
-		} else if ($month > 6 and $month <= 9) { // 3rd Quarter - July - September
+		} else if ($month > 6 && $month <= 9) { // 3rd Quarter - July - September
 			$quarter[0] = $dateObject->format('Y-10-01');
 			$quarter[1] = $dateObject->format('Y-12-31');
 		} else { // 4th Quarter - October - December

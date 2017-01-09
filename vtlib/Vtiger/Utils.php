@@ -68,8 +68,7 @@ class Utils
 
 		if (stripos($realfilepath, $rootdirpath) !== 0 || in_array($filePathParts[0], $unsafeDirectories)) {
 			if ($dieOnFail) {
-				$log = \LoggerManager::getInstance();
-				$log->error(__CLASS__ . ':' . __FUNCTION__ . '(' . $filepath . ') - Sorry! Attempt to access restricted file. realfilepath: ' . print_r($realfilepath, true));
+				\App\Log::error(__METHOD__ . '(' . $filepath . ') - Sorry! Attempt to access restricted file. realfilepath: ' . print_r($realfilepath, true));
 				throw new \Exception\AppException('Sorry! Attempt to access restricted file.');
 			}
 			return false;
@@ -102,8 +101,7 @@ class Utils
 
 		if (stripos($realfilepath, $rootdirpath) !== 0) {
 			if ($dieOnFail) {
-				$log = \LoggerManager::getInstance();
-				$log->error(__CLASS__ . ':' . __FUNCTION__ . '(' . $filepath . ') - Sorry! Attempt to access restricted file. realfilepath: ' . print_r($realfilepath, true));
+				\App\Log::error(__METHOD__ . '(' . $filepath . ') - Sorry! Attempt to access restricted file. realfilepath: ' . print_r($realfilepath, true));
 				throw new \Exception\AppException('Sorry! Attempt to access restricted file.');
 			}
 			return false;
@@ -118,11 +116,10 @@ class Utils
 	 */
 	static function Log($message, $delimit = true)
 	{
-		$log = \LoggerManager::getInstance();
 		$utilsLog = vglobal('tiger_Utils_Log');
 
-		$log->debug($message);
-		if (!isset($utilsLog) || $utilsLog == false)
+		\App\Log::trace($message);
+		if (!isset($utilsLog) || $utilsLog === false)
 			return;
 
 		echo $message;
@@ -140,7 +137,7 @@ class Utils
 	 */
 	static function SQLEscape($value)
 	{
-		if ($value == null)
+		if ($value === null)
 			return $value;
 		$adb = \PearDatabase::getInstance();
 		return $adb->sql_escape_string($value);
@@ -152,8 +149,7 @@ class Utils
 	 */
 	static function CheckTable($tableName)
 	{
-		$adb = \PearDatabase::getInstance();
-		return $adb->checkExistTable($tableName);
+		return \App\Db::getInstance()->isTableExists($tableName);
 	}
 
 	/**
@@ -176,7 +172,7 @@ class Utils
 				if ($adb->isMySQL()) {
 					$suffixTableMeta = ' ENGINE=InnoDB DEFAULT CHARSET=utf8';
 				} else {
-					// TODO Handle other database types.
+					
 				}
 			}
 			$sql .= $suffixTableMeta;
@@ -186,28 +182,20 @@ class Utils
 	}
 
 	/**
-	 * Alter existing table
-	 * @param String tablename to alter
-	 * @param String alter criteria like ' ADD columnname columntype' <br>
-	 * will be appended to ALTER TABLE $tablename SQL
-	 */
-	static function AlterTable($tablename, $criteria)
-	{
-		$adb = \PearDatabase::getInstance();
-		$adb->query("ALTER TABLE " . $tablename . $criteria);
-	}
-
-	/**
 	 * Add column to existing table
-	 * @param String tablename to alter
-	 * @param String columnname to add
-	 * @param String columntype (criteria like 'VARCHAR(100)') 
+	 * @param string $tableName to alter
+	 * @param string $columnName to add
+	 * @param array|string $criteria ([\yii\db\Schema::TYPE_STRING, 1024] | string(1024)) 
 	 */
-	static function AddColumn($tablename, $columnname, $criteria)
+	public static function AddColumn($tableName, $columnName, $criteria)
 	{
-		$adb = \PearDatabase::getInstance();
-		if (!in_array($columnname, $adb->getColumnNames($tablename))) {
-			self::AlterTable($tablename, " ADD COLUMN `$columnname` $criteria");
+		$db = \App\Db::getInstance();
+		$tableSchema = $db->getSchema()->getTableSchema($tableName, true);
+		if (is_null($tableSchema->getColumn($columnName))) {
+			if (is_array($criteria)) {
+				$criteria = $db->getSchema()->createColumnSchemaBuilder($criteria[0], $criteria[1]);
+			}
+			$db->createCommand()->addColumn($tableName, $columnName, $criteria)->execute();
 		}
 	}
 
@@ -269,8 +257,8 @@ class Utils
 	/**
 	 * funtion to log the exception messge to module.log file
 	 * @global type $site_URL
-	 * @param <string> $module name of the log file and It should be a alphanumeric string
-	 * @param <Exception>/<string> $exception Massage show in the log ,It should be a string or Exception object 
+	 * @param string $module name of the log file and It should be a alphanumeric string
+	 * @param <Exception>/string $exception Massage show in the log ,It should be a string or Exception object 
 	 * @param <array> $extra extra massages need to be displayed
 	 * @param <boolean> $backtrace flag to enable or disable backtrace in log  
 	 * @param <boolean> $request flag to enable or disable request in log

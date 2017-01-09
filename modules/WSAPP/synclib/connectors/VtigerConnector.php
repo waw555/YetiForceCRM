@@ -23,7 +23,7 @@ class WSAPP_VtigerConnector extends WSAPP_BaseConnector
 	protected $db;
 	protected $nextSyncSate;
 
-	function __construct()
+	public function __construct()
 	{
 		$this->db = PearDatabase::getInstance();
 	}
@@ -65,13 +65,13 @@ class WSAPP_VtigerConnector extends WSAPP_BaseConnector
 		if ($this->getSynchronizeController()->getSyncType() == "app") {
 			$result = $this->db->pquery("SELECT * FROM vtiger_wsapp_sync_state WHERE name=?", array($this->getName()));
 		} else {
-			$result = $this->db->pquery("SELECT * FROM vtiger_wsapp_sync_state WHERE name=? and userid=?", array($this->getName(), $this->getSynchronizeController()->user->id)); //$this->getSYnchronizeController()->getSyncType();
+			$result = $this->db->pquery("SELECT * FROM vtiger_wsapp_sync_state WHERE name=? and userid=?", array($this->getName(), $this->getSynchronizeController()->user->id));
 		}
 		if ($this->db->num_rows($result) <= 0) {
 			return $this->intialSync();
 		}
 		$rowData = $this->db->raw_query_result_rowdata($result);
-		$stateValues = \includes\utils\Json::decode($rowData['stateencodedvalues']);
+		$stateValues = \App\Json::decode($rowData['stateencodedvalues']);
 		$model = WSAPP_SyncStateModel::getInstanceFromQueryResult($stateValues);
 		return $model;
 	}
@@ -95,14 +95,14 @@ class WSAPP_VtigerConnector extends WSAPP_BaseConnector
 		return $syncStateModel;
 	}
 
-	function registerWithTracker()
+	public function registerWithTracker()
 	{
 		return wsapp_register($this->getSyncTrackerHandlerName(), $this->getSynchronizeController()->getSyncType(), $this->user);
 	}
 
-	function updateSyncState(WSAPP_SyncStateModel $syncStateModel)
+	public function updateSyncState(WSAPP_SyncStateModel $syncStateModel)
 	{
-		$encodedValues = \includes\utils\Json::encode(array('synctrackerid' => $syncStateModel->getSyncTrackerId(), 'synctoken' => $syncStateModel->getSyncToken(), 'more' => $syncStateModel->get('more')));
+		$encodedValues = \App\Json::encode(array('synctrackerid' => $syncStateModel->getSyncTrackerId(), 'synctoken' => $syncStateModel->getSyncToken(), 'more' => $syncStateModel->get('more')));
 		$query = 'INSERT INTO vtiger_wsapp_sync_state(stateencodedvalues,name,userid) VALUES (?,?,?)';
 		$parameters = array($encodedValues, $this->getName(), $this->getSynchronizeController()->user->id);
 		if ($this->isSyncStateExists()) {
@@ -123,7 +123,7 @@ class WSAPP_VtigerConnector extends WSAPP_BaseConnector
 		return false;
 	}
 
-	function isSyncStateExists()
+	public function isSyncStateExists()
 	{
 		$result = null;
 		if ($this->getSynchronizeController()->getSyncType() == "app") {

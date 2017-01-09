@@ -1,4 +1,5 @@
-﻿{*/*+***********************************************************************************************************************************
+﻿{strip}
+{*/*+***********************************************************************************************************************************
 * The contents of this file are subject to the YetiForce Public License Version 1.1 (the "License"); you may not use this file except
 * in compliance with the License.
 * Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
@@ -7,27 +8,6 @@
 * The Initial Developer of the Original Code is YetiForce. Portions created by YetiForce are Copyright (C) www.yetiforce.com. 
 * All Rights Reserved.
 *************************************************************************************************************************************/*}
-
-<style>
-	.fieldDetailsForm .zeroOpacity{
-		display: none;
-	}
-	.visibility{
-		visibility: hidden;
-	}
-	.marginLeft20{
-		margin-left: 20px;
-	}
-	.marginRight20{
-		margin-right: 20px;
-	}
-	.marginTop5{
-		margin-top: 5px;
-	}
-	.paddingNoTop20{
-		padding: 20px 20px 20px 20px;
-	}
-</style>
 <div class="" id="widgetsManagementEditorContainer">
 	<input id="selectedModuleName" type="hidden" value="{$SELECTED_MODULE_NAME}" />
 	<div class="widget_header row">
@@ -45,7 +25,22 @@
 			</div>
 		</div>
 	</div>
-
+	<ul class="nav nav-tabs massEditTabs selectDashboard marginBottom10px">
+		{foreach from=$DASHBOARD_TYPES item=DASHBOARD}
+			<li {if $CURRENT_DASHBOARD eq $DASHBOARD['dashboard_id']}class="active"{/if} data-id="{$DASHBOARD['dashboard_id']}">
+				<a data-toggle="tab">
+					<strong>{vtranslate($DASHBOARD['name'])}</strong>					
+					<button class="btn btn-primary btn-xs glyphicon glyphicon-pencil marginLeft10 editDashboard"></button>
+					{if $DASHBOARD['system'] neq 1}
+						<button class="btn btn-danger btn-xs glyphicon glyphicon-trash marginLeft10 deleteDashboard"></button>
+					{/if}
+				</a>
+			</li>
+		{/foreach}
+		<li class="addDashboard">
+			<a><strong><span class="glyphicon glyphicon-plus"></span></strong></a>
+		</li>
+	</ul>
 	<div class="contents tabbable">
 
 		<div class="tab-content paddingNoTop10 themeTableColor overflowVisible">
@@ -56,8 +51,9 @@
 				</div>
 
 				<div id="moduleBlocks">
-					<input type="hidden" name="filter_users" value='{\includes\utils\Json::encode($WIDGETS_WITH_FILTER_USERS)}'>
-					<input type="hidden" name="filter_restrict" value='{\includes\utils\Json::encode($RESTRICT_FILTER)}'>
+					<input type="hidden" name="filter_date" value='{\App\Json::encode($WIDGETS_WITH_FILTER_DATE)}'>
+					<input type="hidden" name="filter_users" value='{\App\Json::encode($WIDGETS_WITH_FILTER_USERS)}'>
+					<input type="hidden" name="filter_restrict" value='{\App\Json::encode($RESTRICT_FILTER)}'>
 					{foreach key=AUTHORIZATION_KEY item=AUTHORIZATION_INFO from=$DASHBOARD_AUTHORIZATION_BLOCKS}
 						{assign var=AUTHORIZATION_NAME value=$AUTHORIZATION_INFO.name}
 						<div id="block_{$AUTHORIZATION_KEY}" class="editFieldsTable block_{$AUTHORIZATION_KEY} marginBottom10px border1px blockSortable" data-block-id="{$AUTHORIZATION_KEY}" data-sequence="" data-code="{$AUTHORIZATION_INFO.code}" style="border-radius: 4px 4px 0px 0px;background: white;">
@@ -152,6 +148,7 @@
 								<h3 class="modal-title">{vtranslate('LBL_ADD_DASHBOARD_BLOCK', $QUALIFIED_MODULE)}</h3>
 							</div>
 							<form class="form-horizontal addBlockDashBoardForm">
+								<input type="hidden" name="dashboardId" value="{$CURRENT_DASHBOARD}">
 								<div class="modal-body">
 									<div class="form-group">
 										<div class="col-sm-4 control-label">
@@ -184,14 +181,14 @@
 
 							<div class="pull-right btn-toolbar blockActions" style="margin: 4px;">
 								<div class="btn-group">
-									<button class="btn btn-success btn-sm addCustomField hide" type="button"><span class="glyphicon glyphicon-plus"></span>&nbsp;
+									<button class="btn btn-success btn-xs addCustomField hide" type="button"><span class="glyphicon glyphicon-plus"></span>&nbsp;
 										<strong>{vtranslate('LBL_ADD_WIDGET', $QUALIFIED_MODULE)}</strong>
 									</button>
 								</div>
 								{if $SPECIAL_WIDGETS['Rss']}
 									{assign var=RSS_WIDGET value=$SPECIAL_WIDGETS['Rss']}
 									<div class="btn-group">
-										<button class="btn btn-success btn-sm addRss specialWidget" type="button"  data-url="{$RSS_WIDGET->getUrl()}" data-linkid="{$RSS_WIDGET->get('linkid')}" data-name="{$RSS_WIDGET->getName()}" data-width="{$RSS_WIDGET->getWidth()}" data-height="{$RSS_WIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>
+										<button class="btn btn-success btn-xs addRss specialWidget" type="button"  data-url="{$RSS_WIDGET->getUrl()}" data-linkid="{$RSS_WIDGET->get('linkid')}" data-name="{$RSS_WIDGET->getName()}" data-width="{$RSS_WIDGET->getWidth()}" data-height="{$RSS_WIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>
 											<strong>{vtranslate('LBL_ADD_RSS', $QUALIFIED_MODULE)}</strong>
 										</button>
 									</div>
@@ -199,7 +196,7 @@
 								{if $SPECIAL_WIDGETS['Mini List']}
 									{assign var=MINILISTWIDGET value=$SPECIAL_WIDGETS['Mini List']}
 									<div class="btn-group">
-										<button class="btn btn-success btn-sm addMiniList specialWidget" type="button"  data-url="{$MINILISTWIDGET->getUrl()}" data-linkid="{$MINILISTWIDGET->get('linkid')}" data-name="{$MINILISTWIDGET->getName()}" data-width="{$MINILISTWIDGET->getWidth()}" data-height="{$MINILISTWIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
+										<button class="btn btn-success btn-xs addMiniList specialWidget" type="button"  data-url="{$MINILISTWIDGET->getUrl()}" data-linkid="{$MINILISTWIDGET->get('linkid')}" data-name="{$MINILISTWIDGET->getName()}" data-width="{$MINILISTWIDGET->getWidth()}" data-height="{$MINILISTWIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
 											<strong>{vtranslate('LBL_ADD_MINILIST', $QUALIFIED_MODULE)}</strong>
 										</button>
 									</div>
@@ -207,7 +204,7 @@
 								{if $SPECIAL_WIDGETS['ChartFilter']}
 									{assign var=CHART_FILTER_WIDGET value=$SPECIAL_WIDGETS['ChartFilter']}
 									<div class="btn-group">
-										<button class="btn btn-success btn-sm addChartFilter specialWidget" type="button"  data-url="{$CHART_FILTER_WIDGET->getUrl()}" data-linkid="{$CHART_FILTER_WIDGET->get('linkid')}" data-name="{$CHART_FILTER_WIDGET->getName()}" data-width="{$CHART_FILTER_WIDGET->getWidth()}" data-height="{$CHART_FILTER_WIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
+										<button class="btn btn-success btn-xs addChartFilter specialWidget" type="button"  data-url="{$CHART_FILTER_WIDGET->getUrl()}" data-linkid="{$CHART_FILTER_WIDGET->get('linkid')}" data-name="{$CHART_FILTER_WIDGET->getName()}" data-width="{$CHART_FILTER_WIDGET->getWidth()}" data-height="{$CHART_FILTER_WIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
 											<strong>{vtranslate('LBL_ADD_CHART_FILTER', $QUALIFIED_MODULE)}</strong>
 										</button>
 									</div>
@@ -215,7 +212,7 @@
 								{if $SPECIAL_WIDGETS['Notebook']}
 									{assign var=NOTEBOOKWIDGET value=$SPECIAL_WIDGETS['Notebook']}
 									<div class="btn-group">
-										<button class="btn btn-success btn-sm addNotebook specialWidget" type="button" data-url="{$NOTEBOOKWIDGET->getUrl()}" data-linkid="{$NOTEBOOKWIDGET->get('linkid')}" data-name="{$NOTEBOOKWIDGET->getName()}" data-width="{$NOTEBOOKWIDGET->getWidth()}" data-height="{$NOTEBOOKWIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
+										<button class="btn btn-success btn-xs addNotebook specialWidget" type="button" data-url="{$NOTEBOOKWIDGET->getUrl()}" data-linkid="{$NOTEBOOKWIDGET->get('linkid')}" data-name="{$NOTEBOOKWIDGET->getName()}" data-width="{$NOTEBOOKWIDGET->getWidth()}" data-height="{$NOTEBOOKWIDGET->getHeight()}" data-block-id=""><span class="glyphicon glyphicon-plus"></span>&nbsp;
 											<strong>{vtranslate('LBL_ADD_NOTEBOOK', $QUALIFIED_MODULE)}</strong>
 										</button>
 									</div>
@@ -223,13 +220,13 @@
 								{if $SPECIAL_WIDGETS['Chart']}
 									{assign var=CHART_WIDGET value=$SPECIAL_WIDGETS['Chart']}
 									<div class="btn-group">
-										<button class="btn btn-success btn-sm addCharts specialWidget" type="button" data-url="{$CHART_WIDGET->getUrl()}" data-linkid="{$CHART_WIDGET->get('linkid')}" data-name="{$CHART_WIDGET->getName()}" data-width="{$CHART_WIDGET->getWidth()}" data-height="{$CHART_WIDGET->getHeight()}" data-block-id="{$AUTHORIZATION_KEY}"><span class="glyphicon glyphicon-plus"></span>
+										<button class="btn btn-success btn-xs addCharts specialWidget" type="button" data-url="{$CHART_WIDGET->getUrl()}" data-linkid="{$CHART_WIDGET->get('linkid')}" data-name="{$CHART_WIDGET->getName()}" data-width="{$CHART_WIDGET->getWidth()}" data-height="{$CHART_WIDGET->getHeight()}" data-block-id="{$AUTHORIZATION_KEY}"><span class="glyphicon glyphicon-plus"></span>
 											<strong>{vtranslate('LBL_ADD_WIDGET_CHARTS', $QUALIFIED_MODULE)}</strong>
 										</button>
 									</div>
 								{/if}
 								<div class="btn-group actions">
-									<a href="javascript:void(0)" class="deleteCustomBlock btn btn-sm btn-danger" >
+									<a href="javascript:void(0)" class="deleteCustomBlock btn btn-xs btn-danger" >
 										<span class="glyphicon glyphicon-trash alignMiddle" title="{vtranslate('LBL_DELETE', $QUALIFIED_MODULE)}"></span>
 									</a>
 								</div>
@@ -245,7 +242,6 @@
 				<div class="modal createFieldModal fade" tabindex="-1">
 					<div class="modal-dialog">
 						<div class="modal-content">
-
 							<div class="modal-header contentsBackground">
 								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
 								<h3 class="modal-title">{vtranslate('LBL_CREATE_CUSTOM_FIELD', $QUALIFIED_MODULE)}</h3>
@@ -262,7 +258,7 @@
 													{if array_key_exists($WIDGET->getTitle(), $SPECIAL_WIDGETS)}
 														{continue}
 													{/if}
-													<option value="{$WIDGET->get('linkid')}" data-name="{$WIDGET->get('linklabel')}">{vtranslate($WIDGET->getTitle(), $MODULE_NAME)}</option>
+													<option value="{$WIDGET->get('linkid')}" data-name="{$WIDGET->get('linklabel')}">{vtranslate($WIDGET->getTitle(), $QUALIFIED_MODULE)}</option>
 												{/foreach}
 											</select>
 										</div>
@@ -317,6 +313,18 @@
 											<select class="form-control owners_all" multiple="true" disabled name="owners_all" placeholder="{vtranslate('LBL_PLEASE_SELECT_ATLEAST_ONE_OPTION', $QUALIFIED_MODULE)}">
 												{foreach key=OWNER_NAME item=OWNER_ID from=$FILTER_SELECT}
 													<option value="{$OWNER_ID}" selected>{vtranslate($OWNER_NAME, $QUALIFIED_MODULE)}</option>
+												{/foreach}
+											</select>
+										</div>	
+									</div>
+									<div class="form-group widgetFilterDate hide">
+										<div class="col-sm-3 control-label">
+											{vtranslate('LBL_DEFAULT_DATE', $QUALIFIED_MODULE)}
+										</div>
+										<div class="col-sm-8 controls">
+											<select class="form-control" id="date" disabled name="default_date">
+												{foreach key=DATE_VALUE item=DATE_TEXT from=$DATE_SELECT_DEFAULT}
+													<option value="{$DATE_VALUE}">{vtranslate($DATE_TEXT, $QUALIFIED_MODULE)}</option>
 												{/foreach}
 											</select>
 										</div>	
@@ -417,6 +425,18 @@
 													{vtranslate('LBL_FILTERS_AVAILABLE', $QUALIFIED_MODULE)}
 												</label>
 											</div>	
+											<div class="form-group hide">
+												<div class="col-sm-3 control-label">
+													{vtranslate('LBL_DEFAULT_DATE', $QUALIFIED_MODULE)}
+												</div>
+												<div class="col-sm-8 controls">
+													<select class="widgetFilterDate form-control" id="date" disabled name="default_date">
+														{foreach key=DATE_VALUE item=DATE_TEXT from=$DATE_SELECT_DEFAULT}
+															<option value="{$DATE_VALUE}">{vtranslate($DATE_TEXT, $QUALIFIED_MODULE)}</option>
+														{/foreach}
+													</select>
+												</div>	
+											</div>
 										</div>
 										<div class="modal-footer">
 											<span class="pull-right">
@@ -434,3 +454,5 @@
 			</div>
 		</div>
 	</div>
+</div>
+{/strip}

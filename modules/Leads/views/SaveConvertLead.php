@@ -13,29 +13,28 @@ vimport('~include/Webservices/ConvertLead.php');
 class Leads_SaveConvertLead_View extends Vtiger_View_Controller
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
+		$recordId = $request->get('record');
 
 		$currentUserPriviligesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		if (!$currentUserPriviligesModel->hasModuleActionPermission($moduleModel->getId(), 'ConvertLead')) {
+		if (!$currentUserPriviligesModel->hasModuleActionPermission($moduleName, 'ConvertLead')) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 
-		$recordPermission = Users_Privileges_Model::isPermitted($moduleName, 'Save', $recordId);
+		$recordPermission = \App\Privilege::isPermitted($moduleName, 'EditView', $recordId);
 		if (!$recordPermission) {
 			throw new \Exception\NoPermittedToRecord('LBL_NO_PERMISSIONS_FOR_THE_RECORD');
 		}
 
-		$recordId = $request->get('record');
 		$recordModel = Vtiger_Record_Model::getInstanceById($recordId);
 		if (!Leads_Module_Model::checkIfAllowedToConvert($recordModel->get('leadstatus'))) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	public function preProcess(Vtiger_Request $request)
+	public function preProcess(Vtiger_Request $request, $display = true)
 	{
 		
 	}
@@ -57,7 +56,7 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller
 		$convertLeadFields = $recordModel->getConvertLeadFields();
 		$availableModules = ['Accounts'];
 		foreach ($availableModules as $module) {
-			if (\includes\Modules::isModuleActive($module) && in_array($module, $modules)) {
+			if (\App\Module::isModuleActive($module) && in_array($module, $modules)) {
 				$entityValues['entities'][$module]['create'] = true;
 				$entityValues['entities'][$module]['name'] = $module;
 
@@ -73,7 +72,7 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller
 					} elseif ($fieldModel->getFieldDataType() === 'reference' && $fieldValue) {
 						$ids = vtws_getIdComponents($fieldValue);
 						if (count($ids) === 1) {
-							$fieldValue = vtws_getWebserviceEntityId(getSalesEntityType($fieldValue), $fieldValue);
+							$fieldValue = vtws_getWebserviceEntityId(\vtlib\Functions::getCRMRecordType($fieldValue), $fieldValue);
 						}
 					}
 					$entityValues['entities'][$module][$fieldName] = $fieldValue;
@@ -93,17 +92,17 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller
 					$message = vtranslate('LBL_TOO_MANY_ACCOUNTS_TO_CONVERT', $request->getModule(), '<a href="index.php?module=MarketingProcesses&view=Index&parent=Settings"><span class="glyphicon glyphicon-folder-open"></span></a>');
 				}
 				$this->showError($request, '', $message);
-				exit;
+				throw new \Exception\AppException('LBL_TOO_MANY_ACCOUNTS_TO_CONVERT');
 			}
 		} catch (Exception $e) {
 			$this->showError($request, $e);
-			exit;
+			throw new \Exception\AppException($e->getMessage());
 		}
 		try {
 			$result = vtws_convertlead($entityValues, $currentUser);
 		} catch (Exception $e) {
 			$this->showError($request, $e);
-			exit;
+			throw new \Exception\AppException($e->getMessage());
 		}
 
 		if (!empty($result['Accounts'])) {
@@ -115,19 +114,18 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller
 			$mappingFields = $recordModel->get('mappingFields');
 			if (isset($mappingFields['Accounts']['shownerid'])) {
 				$leadShownerField = Vtiger_Field_Model::getInstance('shownerid', $recordModel->getModule());
-				$accRecordModel = Vtiger_Record_Model::getInstanceById($accountId, 'Accounts');
-				$accRecordModel->set('shownerid', $leadShownerField->getUITypeModel()->getEditViewDisplayValue('', $recordId));
-				Users_Privileges_Model::setSharedOwner($accRecordModel);
+				$shownerId = $leadShownerField->getUITypeModel()->getEditViewDisplayValue('', $recordId);
+				Users_Privileges_Model::setSharedOwner($shownerId, $recordId);
 			}
 			ModTracker_Record_Model::addConvertToAccountRelation('Accounts', $accountId, $assignId);
 			header("Location: index.php?view=Detail&module=Accounts&record=$accountId");
 		} else {
 			$this->showError($request);
-			exit;
+			throw new \Exception\AppException('Error');
 		}
 	}
 
-	function showError($request, $exception = false, $message = '')
+	public function showError($request, $exception = false, $message = '')
 	{
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();

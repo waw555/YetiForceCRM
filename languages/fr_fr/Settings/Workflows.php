@@ -157,6 +157,7 @@ $languageStrings = [
 	'Sales stage - Negotiations' => 'Etapes de ventes - Négotiations',
 	'LBL_UPDATE_DATES_BASE_DATE_CHANGES' => 'Mettre à jour les dates des événements générés lorsque la date de base est modifiée',
 	'LBL_CURRENT_USER' => 'Utilisateur connecté',
+	'LBL_SELECT_TEMPLATE' => 'Select template',
 	//workflow trigger types
 	'ONCE' => 'Une seule fois, Lorsque toutes les conditions sont remplies',
 	'ON_EVERY_SAVE' => 'A chaque modification d\'un enregistrement (eg. création, modification)',
@@ -188,6 +189,7 @@ $languageStrings = [
 	'LBL_UPDATE_WORK_TIME_AUTOMATICALLY' => 'Mettre à jour le temps de travail automatiquement',
 	'LBL_UPDATE_WORK_TIME' => 'Mettre à jour le temps de travail',
 	'LBL_UPDATE_RELATED_FIELD' => 'Mettre à jour l\'enregistrement lié',
+	'LBL_AUTO_ASSIGN' => 'Auto assign record',
 	//workflow add time
 	'Current Date' => 'Date courante',
 	'Current Time' => 'Heure courante',
@@ -220,8 +222,8 @@ $languageStrings = [
 	'LBL_WATCHDOG' => 'Track changes',
 	'LBL_UPDATE_WORK_TIME' => 'Update working time',
 	'LBL_SKIP_CURRENT_USER' => 'Skip current user',
-	'LBL_LIST_OF_ALL_CHANGES_IN_RECORD' => 'List of all changes in record',
-	'LBL_LIST_OF_ALL_VALUES_IN_RECORD' => 'List of all values in record',
+	'LBL_LIST_OF_CHANGES_IN_RECORD' => 'List of changes in record',
+	'LBL_LIST_OF_NEW_VALUES_IN_RECORD' => 'List of new values in record',
 	//VTWatchdog
 	'LBL_SELECT_ACTION_TYPE' => 'Sélectionner le type de notification',
 	'LBL_SELECT_RECIPIENTS' => 'Destinataires',

@@ -10,7 +10,7 @@
  ********************************************************************************/
 -->*}
 {strip}
-    {assign var="FIELD_INFO" value=\includes\utils\Json::encode($FIELD_MODEL->getFieldInfo())}
+    {assign var="FIELD_INFO" value=\App\Json::encode($FIELD_MODEL->getFieldInfo())}
 	{assign var="LABEL" value=$FIELD_MODEL->getFieldInfo()}
 	{if isset($SEARCH_INFO['searchValue'])}
 		{assign var=SEARCH_VALUE value=$SEARCH_INFO['searchValue']}
@@ -24,7 +24,7 @@
 			<div  class="input-group-btn alphabetBtnContainer">
 				{if $ALPHABET_VALUE}
 					<button class=" btn btn-primary alphabetBtn" type="button">
-						{vtranslate($ALPHABET_VALUE, $MODULE)}
+						{$ALPHABET_VALUE}
 					</button>
 				{else}
 					<button class=" btn btn-default alphabetBtn" type="button">

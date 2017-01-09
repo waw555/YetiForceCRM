@@ -105,6 +105,9 @@ $languageStrings = [
 	'Record Id' => 'Номер записи',
 	'ticketpriorities' => 'Приоритет',
 	'LBL_NO_ACCOUNTS_IN_HELPDESK' => 'Тикет не связан с какой-либо счетом. Пожалуйста, создайте связь.',
+	'LBL_ACCOUNTS_NO_ACTIVE_SERVICE_CONTRACTS' => 'The Account has no active SLA',
+	'LBL_NO_SERVICE_CONTRACTS_IN_HELPDESK' => 'The ticket is not related to any SLA.',
+	'LBL_SET_SERVICE_CONTRACTS_REFERENCE_DESC' => 'Pressing this button will relate this SLA to ticket.',
 	// FIELDS
 	'FL_SERVICE_CONTRACTS' => 'Соглашение об уровне обслуживания',
 	'FL_SERVICE_CONTRACTS_TYPE' => 'Тип соглашения об уровне обслуживания',

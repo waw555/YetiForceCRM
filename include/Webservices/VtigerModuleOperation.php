@@ -42,15 +42,6 @@ class VtigerModuleOperation extends WebserviceEntityOperation
 			throw new WebServiceException(WebServiceErrorCode::$DATABASEQUERYERROR, vtws_getWebserviceTranslatedString('LBL_' .
 				WebServiceErrorCode::$DATABASEQUERYERROR));
 		}
-
-		$id = $crmObject->getObjectId();
-
-		// Bulk Save Mode
-		if (CRMEntity::isBulkSaveMode()) {
-			// Avoiding complete read, as during bulk save mode, $result['id'] is enough
-			return array('id' => vtws_getId($this->meta->getEntityId(), $id));
-		}
-
 		$error = $crmObject->read($id);
 		if (!$error) {
 			throw new WebServiceException(WebServiceErrorCode::$DATABASEQUERYERROR, vtws_getWebserviceTranslatedString('LBL_' .
@@ -224,7 +215,7 @@ class VtigerModuleOperation extends WebserviceEntityOperation
 		return $result;
 	}
 
-	function getModuleFields()
+	public function getModuleFields()
 	{
 
 		$fields = [];
@@ -240,11 +231,11 @@ class VtigerModuleOperation extends WebserviceEntityOperation
 		return $fields;
 	}
 
-	function getDescribeFieldArray($webserviceField)
+	public function getDescribeFieldArray($webserviceField)
 	{
 		$default_language = VTWS_PreserveGlobal::getGlobal('default_language');
 
-		$fieldLabel = getTranslatedString($webserviceField->getFieldLabelKey(), $this->meta->getTabName());
+		$fieldLabel = \App\Language::translate($webserviceField->getFieldLabelKey(), $this->meta->getTabName());
 
 		$typeDetails = [];
 		if (!is_array($this->partialDescribeFields)) {
@@ -270,12 +261,12 @@ class VtigerModuleOperation extends WebserviceEntityOperation
 		return $describeArray;
 	}
 
-	function getMeta()
+	public function getMeta()
 	{
 		return $this->meta;
 	}
 
-	function getField($fieldName)
+	public function getField($fieldName)
 	{
 		$moduleFields = $this->meta->getModuleFields();
 		return $this->getDescribeFieldArray($moduleFields[$fieldName]);

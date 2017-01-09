@@ -46,7 +46,7 @@ class Vtiger_Action_Model extends Vtiger_Base_Model
 			return true;
 		}
 		$tabId = $module->getId();
-		$sql = 'SELECT 1 FROM vtiger_profile2standardpermissions WHERE tabid = ? AND operation = ? LIMIT 1';
+		$sql = 'SELECT 1 FROM vtiger_profile2standardpermissions WHERE tabid = ? && operation = ? LIMIT 1';
 		$params = array($tabId, $this->getId());
 		$result = $db->pquery($sql, $params);
 		if ($result && $db->num_rows($result) > 0) {
@@ -75,15 +75,12 @@ class Vtiger_Action_Model extends Vtiger_Base_Model
 		}
 		if (self::$cachedInstances) {
 			$actionid = vtlib\Utils::isNumber($value) ? $value : false;
+			if ($actionid === false && isset(self::$cachedInstances[$value])) {
+				return self::$cachedInstances[$value];
+			}
 			foreach (self::$cachedInstances as $instance) {
-				if ($actionid !== false) {
-					if ($instance->get('actionid') == $actionid) {
-						return $instance;
-					}
-				} else {
-					if ($instance->get('actionname') == $value) {
-						return $instance;
-					}
+				if ($instance->get('actionid') == $actionid) {
+					return $instance;
 				}
 			}
 		}
@@ -109,22 +106,22 @@ class Vtiger_Action_Model extends Vtiger_Base_Model
 
 	public static function getAll($configurable = false)
 	{
-		$actionModels = Vtiger_Cache::get('vtiger', 'actions');
-		if (!$actionModels) {
-			$db = PearDatabase::getInstance();
-
-			$sql = 'SELECT * FROM vtiger_actionmapping';
-			$params = [];
-			if ($configurable) {
-				$sql .= sprintf(' WHERE actionname NOT IN (%s)', generateQuestionMarks(self::$nonConfigurableActions));
-				array_push($params, self::$nonConfigurableActions);
+		if (\App\Cache::has('Actions', 'all')) {
+			$rows = \App\Cache::get('Actions', 'all');
+		} else {
+			$rows = (new \App\Db\Query())->from('vtiger_actionmapping')->all();
+			\App\Cache::save('Actions', 'all', $rows);
+		}
+		if ($configurable) {
+			foreach ($rows as $key => &$row) {
+				if (in_array($row['actionname'], self::$nonConfigurableActions)) {
+					unset($rows[$key]);
+				}
 			}
-			$result = $db->pquery($sql, $params);
-			$actionModels = [];
-			while ($row = $db->getRow($result)) {
-				$actionModels[] = self::getInstanceFromRow($row);
-			}
-			Vtiger_Cache::set('vtiger', 'actions', $actionModels);
+		}
+		$actionModels = [];
+		foreach ($rows as &$row) {
+			$actionModels[$row['actionname']] = self::getInstanceFromRow($row);
 		}
 		return $actionModels;
 	}

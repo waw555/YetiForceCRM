@@ -9,12 +9,11 @@
 class KnowledgeBase_ImageUploadAjax_Action extends Vtiger_Action_Controller
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission($moduleModel->getId());
+		$permission = $userPrivilegesModel->hasModulePermission($moduleName);
 		if (!$permission) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
@@ -51,7 +50,7 @@ class KnowledgeBase_ImageUploadAjax_Action extends Vtiger_Action_Controller
 					}
 				}
 			}
-			$fileInstance = \includes\fields\File::loadFromRequest($_FILES['upload']);
+			$fileInstance = \App\Fields\File::loadFromRequest($_FILES['upload']);
 			if (!$fileInstance->validate()) {
 				return false;
 			}
@@ -96,7 +95,7 @@ class KnowledgeBase_ImageUploadAjax_Action extends Vtiger_Action_Controller
 			$fullUploadDir = $_SERVER['DOCUMENT_ROOT'] . '/' . $uploadDir;
 			$newFileName = $this->setFileName($fullUploadDir, $fileName, ".$type", 0, $rename);
 			// Full file path
-			$newFileName = \includes\fields\File::sanitizeUploadFileName($newFileName);
+			$newFileName = \App\Fields\File::sanitizeUploadFileName($newFileName);
 			$uploadPath = $_SERVER['DOCUMENT_ROOT'] . '/' . $uploadDir . $newFileName;
 			// If there is no errors no errors, upload the image, else, output the errors
 			if (!$response) {
@@ -154,7 +153,7 @@ class KnowledgeBase_ImageUploadAjax_Action extends Vtiger_Action_Controller
 	 * @param int $rename checks if file should be rename or overwrite 
 	 * @return string filename with extension
 	 */
-	function setFileName($dirPath, $fileName, $extension, $i, $rename)
+	public function setFileName($dirPath, $fileName, $extension, $i, $rename)
 	{
 		if ($rename == 1 && file_exists($dirPath . $fileName . $extension)) {
 			$ending = '_' . $i;

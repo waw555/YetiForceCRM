@@ -5,8 +5,11 @@
  * @license licenses/License.html
  * @author Maciej Stencel <m.stencel@yetiforce.com>
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 $languageStrings = [
+	'PLL_TEXT' => 'Tekst',
+	'PLL_IMAGE' => 'Obraz',
 	'LBL_PDF' => 'PDF',
 	'LBL_PDF_DESCRIPTION' => 'Testowa wersja konfiguracji szablonów PDF.',
 	'LBL_CREATING_PDF' => 'Utwórz szablon pdf',
@@ -26,8 +29,8 @@ $languageStrings = [
 	'LBL_DOCUMENT_PERMISSIONS' => 'Uprawnienia',
 	'LBL_DOCUMENT_WATERMARK' => 'Znak wodny',
 	'Module' => 'Moduł',
-	'active' => 'Aktywny',
-	'inactive' => 'Nieaktywny',
+	'PLL_ACTIVE' => 'Aktywny',
+	'PLL_INACTIVE' => 'Nieaktywny',
 	'LBL_PRIMARY_NAME' => 'Nazwa podstawowa',
 	'LBL_SECONDARY_NAME' => 'Nazwa dodatkowa',
 	'LBL_FOLDER_NAME' => 'Nazwa folderu',
@@ -106,6 +109,8 @@ $languageStrings = [
 	'LBL_FOOTER_HEIGHT' => 'Margines stopki',
 	'LBL_HEADER_IN_MILIMETERS' => 'Margines nagłówka od górnej krawędzi strony w milimetrach',
 	'LBL_FOOTER_IN_MILIMETERS' => 'Margines stopki od górnej krawędzi strony w milimetrach',
+	'LBL_GENERATE_ONE_PDF' => 'Generuj jeden pdf dla wielu rekordów',
+	'LBL_GENERATE_ONE_PDF_INFO' => 'W przypadku gdy PDF zawiera funkcje specjalną  generującą jedną tabelę  dla wielu rekordów, zaznaczenie tego pola spowoduje wygenerowanie jednego pliku PDF.',
 	// page format names
 	'4A0' => '4A0',
 	'2A0' => '2A0',

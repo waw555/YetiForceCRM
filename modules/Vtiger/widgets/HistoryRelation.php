@@ -5,6 +5,7 @@
  * @package YetiForce.Widget
  * @license licenses/License.html
  * @author Tomasz Kur <t.kur@yetiforce.com>
+ * @author Radosław Skrzypczak <r.skrzypczak@yetiforce.com>
  */
 class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 {
@@ -13,6 +14,7 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 		'ModComments' => 'bgBlue',
 		'OSSMailViewReceived' => 'bgGreen',
 		'OSSMailViewSent' => 'bgDanger',
+		'OSSMailViewInternal' => 'bgBlue',
 		'Calendar' => 'bgOrange',
 	];
 
@@ -43,28 +45,34 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 		return 'HistoryRelationConfig';
 	}
 
+	/**
+	 * Function gets records for timeline widget
+	 * @param Vtiger_Request $request
+	 * @param Vtiger_Paging_Model $pagingModel
+	 * @return array - List of records
+	 */
 	public static function getHistory(Vtiger_Request $request, Vtiger_Paging_Model $pagingModel)
 	{
-		$db = PearDatabase::getInstance();
+		$db = \App\Db::getInstance();
 		$recordId = $request->get('record');
 		$type = $request->get('type');
 		if (empty($type)) {
 			return [];
 		}
 
-		$query = self::getQuery($recordId, $request->getModule(), $type);
+		$query = static::getQuery($recordId, $request->getModule(), $type);
 		if (empty($query)) {
 			return [];
 		}
 		$startIndex = $pagingModel->getStartIndex();
 		$pageLimit = $pagingModel->getPageLimit();
 
-		$limitQuery = $query . ' LIMIT ' . $startIndex . ',' . $pageLimit;
-		$results = $db->query($limitQuery);
+		$query->limit($pageLimit)->offset($startIndex);
 		$history = [];
 		$groups = Settings_Groups_Record_Model::getAll();
 		$groupIds = array_keys($groups);
-		while ($row = $db->getRow($results)) {
+		$dataReader = $query->createCommand()->query();
+		while ($row = $dataReader->read()) {
 			if (in_array($row['user'], $groupIds)) {
 				$row['isGroup'] = true;
 				$row['userModel'] = $groups[$row['user']];
@@ -85,56 +93,87 @@ class Vtiger_HistoryRelation_Widget extends Vtiger_Basic_Widget
 		return $history;
 	}
 
-	public function getQuery($recordId, $moduleName, $type)
+	/**
+	 * Function creates database query in order to get records for timeline widget
+	 * @param int $recordId
+	 * @param string $moduleName
+	 * @param array $type
+	 * @return query
+	 */
+	public static function getQuery($recordId, $moduleName, $type)
 	{
 		$queries = [];
 		$field = Vtiger_ModulesHierarchy_Model::getMappingRelatedField($moduleName);
-
+		$db = App\Db::getInstance();
 		if (in_array('Calendar', $type)) {
-			$sql = sprintf('SELECT NULL AS `body`, CONCAT(\'Calendar\') AS type, vtiger_crmentity.crmid AS id,a.subject AS content,vtiger_crmentity.smownerid AS user,concat(a.date_start, " ", a.time_start) AS `time`
-				FROM vtiger_activity a
-				INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = a.activityid 
-				WHERE vtiger_crmentity.deleted = 0 AND a.%s = %d', $field, $recordId);
-			$instance = CRMEntity::getInstance('Calendar');
-			$securityParameter = $instance->getUserAccessConditionsQuerySR('Calendar', false, $recordId);
-			if ($securityParameter != '')
-				$sql .= $securityParameter;
-			$queries[] = $sql;
+			$query = (new \App\Db\Query())
+				->select([
+					'body' => new \yii\db\Expression($db->quoteValue('')),
+					'attachments_exist' => new \yii\db\Expression($db->quoteValue('')),
+					'type' => new \yii\db\Expression($db->quoteValue('Calendar')),
+					'id' => 'vtiger_crmentity.crmid',
+					'content' => 'a.subject',
+					'user' => 'vtiger_crmentity.smownerid',
+					'time' => new \yii\db\Expression('CONCAT(a.date_start, ' . $db->quoteValue(' ') . ', a.time_start)')
+				])
+				->from('vtiger_activity a')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = a.activityid')
+				->where(['vtiger_crmentity.deleted' => 0])
+				->andWhere(['=', 'a.' . $field, $recordId]);
+			\App\PrivilegeQuery::getConditions($query, 'Calendar', false, $recordId);
+			$queries[] = $query;
 		}
 		if (in_array('ModComments', $type)) {
-			$sql = sprintf('SELECT NULL AS `body`, CONCAT(\'ModComments\') AS type,m.modcommentsid AS id,m.commentcontent AS content,vtiger_crmentity.smownerid AS user,vtiger_crmentity.createdtime AS `time` 
-				FROM vtiger_modcomments m
-				INNER JOIN vtiger_crmentity ON m.modcommentsid = vtiger_crmentity.crmid 
-				WHERE vtiger_crmentity.deleted = 0 AND related_to = %d', $recordId);
-			$instance = CRMEntity::getInstance('ModComments');
-			$securityParameter = $instance->getUserAccessConditionsQuerySR('ModComments', false, $recordId);
-			if ($securityParameter != '')
-				$sql .= $securityParameter;
-			$queries[] = $sql;
+			$query = (new \App\Db\Query())
+				->select([
+					'body' => new \yii\db\Expression($db->quoteValue('')),
+					'attachments_exist' => new \yii\db\Expression($db->quoteValue('')),
+					'type' => new \yii\db\Expression($db->quoteValue('ModComments')),
+					'id' => 'm.modcommentsid',
+					'content' => 'm.commentcontent',
+					'user' => 'vtiger_crmentity.smownerid',
+					'time' => 'vtiger_crmentity.createdtime'
+				])
+				->from('vtiger_modcomments m')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = m.modcommentsid')
+				->where(['vtiger_crmentity.deleted' => 0])
+				->andWhere(['=', 'related_to', $recordId]);
+			\App\PrivilegeQuery::getConditions($query, 'ModComments', false, $recordId);
+			$queries[] = $query;
 		}
 		if (in_array('Emails', $type)) {
-			$sql = sprintf('SELECT o.content AS `body`, CONCAT(\'OSSMailView\', o.ossmailview_sendtype) AS `type`,o.ossmailviewid AS id,o.subject AS content,vtiger_crmentity.smownerid AS user,vtiger_crmentity.createdtime AS `time` 
-				FROM vtiger_ossmailview o
-				INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = o.ossmailviewid 
-				INNER JOIN vtiger_ossmailview_relation r ON r.ossmailviewid = o.ossmailviewid 
-				WHERE vtiger_crmentity.deleted = 0 AND r.crmid = %d', $recordId);
-			$instance = CRMEntity::getInstance('OSSMailView');
-			$securityParameter = $instance->getUserAccessConditionsQuerySR('OSSMailView', false, $recordId);
-			if ($securityParameter != '')
-				$sql .= $securityParameter;
-			$queries[] = $sql;
+			$query = (new \App\Db\Query())
+				->select([
+					'body' => 'o.content',
+					'attachments_exist',
+					'type' => new \yii\db\Expression('CONCAT(\'OSSMailView\', o.ossmailview_sendtype)'),
+					'id' => 'o.ossmailviewid',
+					'content' => 'o.subject',
+					'user' => 'vtiger_crmentity.smownerid',
+					'time' => 'vtiger_crmentity.createdtime'
+				])
+				->from('vtiger_ossmailview o')
+				->innerJoin('vtiger_crmentity', 'vtiger_crmentity.crmid = o.ossmailviewid')
+				->innerJoin('vtiger_ossmailview_relation r', 'r.ossmailviewid = o.ossmailviewid ')
+				->where(['vtiger_crmentity.deleted' => 0])
+				->andWhere(['=', 'r.crmid', $recordId]);
+			\App\PrivilegeQuery::getConditions($query, 'OSSMailView', false, $recordId);
+			$queries[] = $query;
 		}
-
 		if (count($queries) == 1) {
 			$sql = reset($queries);
 		} else {
-			$sql = 'SELECT * FROM (';
+			$subQuery = reset($queries);
+			$index = 0;
 			foreach ($queries as $query) {
-				$sql .= $query . ' UNION ALL ';
+				if ($index !== 0) {
+					$subQuery->union($query, true);
+				}
+
+				$index++;
 			}
-			$sql = rtrim($sql, ' UNION  ALL ') . ') AS records';
+			$sql = (new \App\Db\Query)->from(['records' => $subQuery]);
 		}
-		$sql .= ' ORDER BY time DESC';
-		return $sql;
+		return $sql->orderBy(['time' => SORT_DESC]);
 	}
 }

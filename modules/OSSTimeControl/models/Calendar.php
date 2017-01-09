@@ -20,7 +20,7 @@ class OSSTimeControl_Calendar_Model extends Vtiger_Base_Model
 		$query = getListQuery($module);
 		$params = array();
 		if ($this->get('start') && $this->get('end')) {
-			$dbStartDateOject = DateTimeField::convertToDBTimeZone($this->get('start'),null, false);
+			$dbStartDateOject = DateTimeField::convertToDBTimeZone($this->get('start'), null, false);
 			$dbStartDateTime = $dbStartDateOject->format('Y-m-d H:i:s');
 			$dbStartDate = $dbStartDateOject->format('Y-m-d');
 			$dbEndDateObject = DateTimeField::convertToDBTimeZone($this->get('end'), null, false);
@@ -44,21 +44,19 @@ class OSSTimeControl_Calendar_Model extends Vtiger_Base_Model
 				$query.= ' AND vtiger_crmentity.smownerid IN (' . $this->get('user') . ')';
 			}
 		}
-		$instance = CRMEntity::getInstance($module);
-		$securityParameter = $instance->getUserAccessConditionsQuerySR($module, $currentUser);
-		if ($securityParameter != '')
-			$query.= $securityParameter;
-		$query.= ' ORDER BY date_start,time_start ASC';
+		$query .= \App\PrivilegeQuery::getAccessConditions($module, $currentUser->getId());
+		$query .= ' ORDER BY date_start,time_start ASC';
 
 		$queryResult = $db->pquery($query, $params);
-		$result = array();
-		for ($i = 0; $i < $db->num_rows($queryResult); $i++) {
+		$result = [];
+		$numRowsCount = $db->num_rows($queryResult);
+		for ($i = 0; $i < $numRowsCount; $i++) {
 			$record = $db->raw_query_result_rowdata($queryResult, $i);
 
-			$item = array();
+			$item = [];
 			$crmid = $record['osstimecontrolid'];
 			$item['id'] = $crmid;
-			$item['title'] = vtranslate($record['name'], $module);
+			$item['title'] = \App\Language::translate($record['name'], $module);
 			$item['url'] = 'index.php?module=OSSTimeControl&view=Detail&record=' . $crmid;
 
 			$dateTimeFieldInstance = new DateTimeField($record['date_start'] . ' ' . $record['time_start']);

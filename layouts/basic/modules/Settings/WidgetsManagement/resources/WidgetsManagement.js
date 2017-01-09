@@ -19,6 +19,15 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 		else
 			thisInstance.widgetWithFilterUsers = [];
 	},
+	widgetWithFilterDate: [],
+	setWidgetWithFilterDate: function () {
+		var thisInstance = this;
+		var element = jQuery('[name="filter_date"]').val();
+		if (element)
+			thisInstance.widgetWithFilterDate = JSON.parse(element);
+		else
+			thisInstance.widgetWithFilterDate = [];
+	},
 	restrictFilter: [],
 	setRestrictFilter: function () {
 		var thisInstance = this;
@@ -47,6 +56,81 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 			fields.push(jQuery(this).data('linkid').toString());
 		});
 		return fields;
+	},
+	getCurrentDashboardId: function () {
+		return $('.selectDashboard li.active').data('id');
+	},
+	registerAddedDashboard: function () {
+		var thisInstance = this;
+		$('.addDashboard').on('click', function () {
+			var data = {
+				url: 'index.php?parent=Settings&module=' + app.getModuleName() + '&view=DashboardType',
+				sendByAjaxCb: function () {
+					var contentsDiv = $('.contentsDiv');
+					thisInstance.getModuleLayoutEditor('Home').then(
+							function (data) {
+								contentsDiv.html(data);
+								thisInstance.registerEvents();
+							}
+					);
+				},
+			};
+			app.showModalWindow(data);
+		});
+	},
+	registerSelectDashboard: function () {
+		var thisInstance = this;
+		$('.selectDashboard li').on('click', function (e) {
+			var currentTarget = $(e.currentTarget);
+			var dashboardId = currentTarget.data('id');
+			var contentsDiv = $('.contentsDiv');
+			thisInstance.getModuleLayoutEditor('Home', dashboardId).then(
+					function (data) {
+						contentsDiv.html(data);
+						thisInstance.registerEvents();
+					}
+			);
+		});
+	},
+	registerDashboardAction: function () {
+		var thisInstance = this;
+		$('.editDashboard').on('click', function (e) {
+			var currentTarget = $(e.currentTarget);
+			e.stopPropagation();
+			var data = {
+				url: 'index.php?parent=Settings&module=' + app.getModuleName() + '&view=DashboardType&dashboardId=' + currentTarget.closest('li').data('id'),
+				sendByAjaxCb: function () {
+					var contentsDiv = $('.contentsDiv');
+					thisInstance.getModuleLayoutEditor('Home', currentTarget.closest('li').data('id')).then(
+							function (data) {
+								contentsDiv.html(data);
+								thisInstance.registerEvents();
+							}
+					);
+				},
+			};
+			app.showModalWindow(data);
+		});
+		$('.deleteDashboard').on('click', function (e) {
+			var currentTarget = $(e.currentTarget);
+			e.stopPropagation();
+			var params = {
+				parent: 'Settings',
+				module: app.getModuleName(),
+				action: 'Dashboard',
+				mode: 'delete',
+				dashboardId: currentTarget.closest('li').data('id')
+			};
+			AppConnector.request(params).then(function () {
+				var contentsDiv = $('.contentsDiv');
+				thisInstance.getModuleLayoutEditor('Home', 1).then(
+						function (data) {
+							contentsDiv.html(data);
+							thisInstance.registerEvents();
+						}
+				);
+			});
+		});
 	},
 	/**
 	 * Function to register click event for add custom block button
@@ -176,14 +260,21 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 					}
 				}
 			}
+			if (jQuery.inArray(name, thisInstance.widgetWithFilterDate) != -1) {
+				addFieldContainer.find('.widgetFilterDate').removeClass('hide').find('select').removeAttr('disabled').show();
+			}
 
 			var callBackFunction = function (data) {
 				//register all select2 Elements
 				app.showSelect2ElementView(data.find('select'));
 				data.find('select.widgets').on('change', function () {
 					data.find('.widgetFilter').remove();
+					data.find('.widgetFilterDate').remove();
 					var elementsToFilter = contents.find('.createFieldModal .widgetFilter').clone(true, true);
+					var elementsToFilterDate = contents.find('.createFieldModal .widgetFilterDate').clone(true, true);
+					
 					data.find('.modal-body').append(elementsToFilter);
+					data.find('.modal-body').append(elementsToFilterDate);
 					var name = jQuery(this).find(':selected').data('name');
 					if (jQuery.inArray(name, thisInstance.widgetWithFilterUsers) != -1) {
 						elementsToFilter.removeClass('hide').find('select').prop('disabled', false);
@@ -196,6 +287,12 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 						app.showSelect2ElementView(elementsToFilter.find('select'));
 					} else {
 						elementsToFilter.addClass('hide').find('select').prop('disabled', true);
+					}
+					if (jQuery.inArray(name, thisInstance.widgetWithFilterDate) != -1) {
+						elementsToFilterDate.removeClass('hide').find('select').prop('disabled', false);
+						app.showSelect2ElementView(elementsToFilterDate.find('select'));
+					} else {
+						elementsToFilterDate.addClass('hide').find('select').prop('disabled', true);
 					}
 				});
 
@@ -282,7 +379,11 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 		var fieldContainer = fieldCopy.find('div.marginLeftZero.border1px');
 		fieldContainer.addClass('opacity editFieldsWidget').attr('data-field-id', result['id']).attr('data-block-id', result['blockid']).attr('data-linkid', result['linkid']);
 		fieldContainer.find('.deleteCustomField, .saveFieldDetails').attr('data-field-id', result['id']);
-		fieldContainer.find('.fieldLabel').html(result['label']);
+		if (result['title']) {
+			fieldContainer.find('.fieldLabel').html(result['title']);
+		} else {
+			fieldContainer.find('.fieldLabel').html(result['label']);
+		}
 		if (!result['status'])
 			fieldContainer.find('input[name="limit"]').closest('div.limit').remove();
 		if (typeof result['default_owner'] != 'undefined')
@@ -390,7 +491,11 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 				var users = dropDownMenu.find('select[name="owners_all"]');
 				app.showSelectizeElementView(users);
 			}
-
+			selectElements = basicDropDown.find('select[name="default_date"]');
+			if (selectElements.length > 0) {
+				var users = dropDownMenu.find('select[name="default_date"]');
+				app.showSelect2ElementView(users);
+			}
 
 			thisInstance.avoidDropDownClick(dropDownContainer);
 
@@ -555,14 +660,18 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 	addChartFilterWidget: function (element) {
 		var thisInstance = this;
 		element = jQuery(element);
-
+		var fieldTypeToGroup = ['currency', 'double', 'percentage', 'integer'];
 		app.showModalWindow(null, "index.php?module=Home&view=ChartFilter&step=step1", function (wizardContainer) {
 			var form = jQuery('form', wizardContainer);
 			var chartType = jQuery('select[name="chartType"]', wizardContainer);
 			var moduleNameSelectDOM = jQuery('select[name="module"]', wizardContainer);
 			var filteridSelectDOM = jQuery('select[name="filterid"]', wizardContainer);
 			var fieldsSelectDOM = jQuery('select[name="groupField"]', wizardContainer);
-
+			var sectorContainer = form.find('.sectorContainer');
+			app.showSelect2ElementView(sectorContainer.find('[name="sectorField"]'), {
+				tags: true,
+				tokenSeparators: [',', ' ']
+			});
 			var moduleNameSelect2 = app.showSelect2ElementView(moduleNameSelectDOM, {
 				placeholder: app.vtranslate('JS_SELECT_MODULE')
 			});
@@ -579,7 +688,15 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 			filteridSelectDOM.closest('tr').hide();
 			fieldsSelectDOM.closest('tr').hide();
 			footer.hide();
-
+			chartType.on('change', function (e) {
+				var currentTarget = $(e.currentTarget);
+				var value = currentTarget.val();
+				if (value == 'Barchat' || value == 'Horizontal') {
+					form.find('.isColorContainer').removeClass('hide');
+				} else {
+					form.find('.isColorContainer').addClass('hide');
+				}
+			});
 			moduleNameSelect2.change(function () {
 				if (!moduleNameSelect2.val())
 					return;
@@ -615,6 +732,12 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 				if (!fieldsSelect2.val()) {
 					footer.hide();
 				} else {
+					var fieldType = fieldsSelect2.find(':selected').data('fieldType');
+					if (chartType.val() == 'Funnel' && fieldTypeToGroup.indexOf(fieldType) != -1) {
+						sectorContainer.removeClass('hide');
+					} else {
+						sectorContainer.addClass('hide');
+					}
 					footer.show();
 				}
 			});
@@ -626,16 +749,23 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 				var selectedFilterId = filteridSelect2.val();
 				var selectedFilterLabel = filteridSelect2.find(':selected').text();
 				var fieldLabel = fieldsSelect2.find(':selected').text();
+				var isColorValue = 0;
+				var isColor = form.find('.isColor');
+				if (!isColor.hasClass('hide') && isColor.is(':checked')) {
+					isColorValue = 1;
+				}
 				var data = {
 					module: selectedModule,
 					groupField: fieldsSelect2.val(),
 					chartType: chartType.val(),
+					color: isColorValue,
+					sector: sectorContainer.find('[name="sectorField"]').val()
 				};
-				finializeAddChart(selectedModuleLabel, selectedFilterId, selectedFilterLabel, fieldLabel, data);
+				finializeAddChart(selectedModuleLabel, selectedFilterId, selectedFilterLabel, fieldLabel, data, form);
 			});
 		});
 
-		function finializeAddChart(moduleNameLabel, filterid, filterLabel, fieldLabel, data) {
+		function finializeAddChart(moduleNameLabel, filterid, filterLabel, fieldLabel, data, form) {
 
 			var paramsForm = {};
 			paramsForm['data'] = JSON.stringify(data);
@@ -645,6 +775,7 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 			paramsForm['label'] = moduleNameLabel + ' - ' + filterLabel + ' - ' + fieldLabel;
 			paramsForm['name'] = 'ChartFilter';
 			paramsForm['filterid'] = filterid;
+			paramsForm['title'] = form.find('[name="widgetTitle"]').val(),
 			paramsForm['isdefault'] = 0;
 			paramsForm['cache'] = 0;
 			paramsForm['height'] = 4;
@@ -701,7 +832,7 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 					var noteBookParams = {
 						'module': 'Vtiger',
 						'action': 'NoteBook',
-						'mode': 'NoteBookCreate',
+						'mode': 'noteBookCreate',
 						'notePadName': notePadName,
 						'notePadContent': notePadContent,
 						'blockid': blockId,
@@ -808,12 +939,11 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 				fieldsSelect2.select2('data').map(function (obj) {
 					selectedFields.push(obj.id);
 				});
-				// TODO mandatory field validation
-				finializeAdd(selectedModule, selectedModuleLabel, selectedFilterId, selectedFilterLabel, selectedFields);
+				finializeAdd(selectedModule, selectedModuleLabel, selectedFilterId, selectedFilterLabel, selectedFields, form);
 			});
 		});
 
-		function finializeAdd(moduleName, moduleNameLabel, filterid, filterLabel, fields) {
+		function finializeAdd(moduleName, moduleNameLabel, filterid, filterLabel, fields, form) {
 			var data = {
 				module: moduleName
 			}
@@ -825,14 +955,14 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 			paramsForm['data'] = JSON.stringify(data);
 			paramsForm['action'] = 'addWidget';
 			paramsForm['blockid'] = element.data('block-id');
-			;
+			paramsForm['title'] = form.find('[name="widgetTitle"]').val(),
 			paramsForm['linkid'] = element.data('linkid');
 			paramsForm['label'] = moduleNameLabel + ' - ' + filterLabel;
 			paramsForm['name'] = 'Mini List';
 			paramsForm['filterid'] = filterid;
 			paramsForm['isdefault'] = 0;
 			paramsForm['cache'] = 0;
-			paramsForm['height'] = 3;
+			paramsForm['height'] = 4;
 			paramsForm['width'] = 4;
 			paramsForm['owners_all'] = ["mine", "all", "users", "groups"];
 			paramsForm['default_owner'] = 'mine';
@@ -970,7 +1100,7 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 		container.on('change', '[name="widgetsManagementEditorModules"]', function (e) {
 			var currentTarget = jQuery(e.currentTarget);
 			var selectedModule = currentTarget.val();
-			thisInstance.getModuleLayoutEditor(selectedModule).then(
+			thisInstance.getModuleLayoutEditor(selectedModule, thisInstance.getCurrentDashboardId()).then(
 					function (data) {
 						contentsDiv.html(data);
 						thisInstance.registerEvents();
@@ -982,7 +1112,7 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 	/**
 	 * Function to get the respective module layout editor through pjax
 	 */
-	getModuleLayoutEditor: function (selectedModule) {
+	getModuleLayoutEditor: function (selectedModule, selectedDashboard) {
 		var thisInstance = this;
 		var aDeferred = jQuery.Deferred();
 		var progressIndicatorElement = jQuery.progressIndicator({
@@ -997,7 +1127,7 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 		params['parent'] = app.getParentModuleName();
 		params['view'] = 'Configuration';
 		params['sourceModule'] = selectedModule;
-
+		params['dashboardId'] = selectedDashboard;
 		AppConnector.requestPjax(params).then(
 				function (data) {
 					progressIndicatorElement.progressIndicator({'mode': 'hide'});
@@ -1025,6 +1155,10 @@ jQuery.Class('Settings_WidgetsManagement_Js', {
 		thisInstance.registerModulesChangeEvent();
 		thisInstance.setWidgetWithFilterUsers();
 		thisInstance.setRestrictFilter();
+		thisInstance.setWidgetWithFilterDate();
+		thisInstance.registerAddedDashboard();
+		thisInstance.registerSelectDashboard();
+		thisInstance.registerDashboardAction();
 	}
 
 });

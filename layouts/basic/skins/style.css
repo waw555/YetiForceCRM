@@ -1017,8 +1017,7 @@ td.fieldValue input,
 td.fieldValue .input-group {
 	margin-bottom: 0;
 }
-.actionImage,
-.actionImages {
+.actionImage {
 	opacity: 0;
 	/*for IE*/
 
@@ -1060,7 +1059,7 @@ td.fieldValue .input-group {
 }
 .listViewEntriesTable .listViewEntries .unreviewed .badge,
 .listViewEntriesTable .listViewEntries .actions{
-	margin: -5px 0 0 5px;
+	margin: -4px 0 0 5px;
 }
 .listViewEntriesTable td.listViewEntryValue,
 .listViewEntries td {
@@ -1428,6 +1427,8 @@ th.htColHeader,
 .groupMembersColors li > div {
 	margin-left: 10px;
 }
+.select2-results__option.Users,
+.select2-selection__choice.Users,
 #s2id_memberList .Users,
 .groupMembersColors .Users {
 	background-color: #f99984 !important;
@@ -1435,6 +1436,8 @@ th.htColHeader,
 	margin-bottom: 2px;
 	background-image: none;
 }
+.select2-results__option.Groups,
+.select2-selection__choice.Groups,
 #s2id_memberList .Groups,
 .groupMembersColors .Groups {
 	background-color: #acd5ff !important;
@@ -1442,6 +1445,8 @@ th.htColHeader,
 	padding: 5px;
 	margin-bottom: 2px;
 }
+.select2-results__option.Roles,
+.select2-selection__choice.Roles,
 #s2id_memberList .Roles,
 .groupMembersColors .Roles {
 	background-color: #ffec98 !important;
@@ -1449,12 +1454,21 @@ th.htColHeader,
 	padding: 5px;
 	margin-bottom: 2px;
 }
+.select2-results__option.RoleAndSubordinates,
+.select2-selection__choice.RoleAndSubordinates,
 #s2id_memberList .RoleAndSubordinates,
 .groupMembersColors .RoleAndSubordinates {
 	background-color: #c4dea2 !important;
 	background-image: none;
 	padding: 5px;
 	margin-bottom: 2px;
+}
+.select2-results__option.Users.select2-results__option--highlighted,
+.select2-results__option.Groups.select2-results__option--highlighted,
+.select2-results__option.Roles.select2-results__option--highlighted,
+.select2-results__option.RoleAndSubordinates.select2-results__option--highlighted
+{
+	background-color: #337ab7 !important; 
 }
 .collectiveGroupMembers {
 	border: 1px solid #dddddd;
@@ -2564,6 +2578,9 @@ i {
 .marginLeft10{
 	margin-left:10px;
 }
+.marginLeft20{
+	margin-left: 20px;
+}
 .marginbottomZero {
 	margin-bottom: 0 !important;
 }
@@ -2660,7 +2677,7 @@ table.summary-table .summaryViewEdit{
 	color: red;
 }
 .highlightBackgroundColor {
-	background: #eeeff2;
+	background: #eeeff2 !important;
 }
 .contentsBackground {
 	background: #ffffff;
@@ -3139,6 +3156,9 @@ span[name=existingImages] img{
 .marginRight10{
 	margin-right: 10px;
 }
+.marginRight20{
+	margin-right: 20px;
+}
 .marginRightMinus20{
 	margin-right:-20px;
 }
@@ -3263,7 +3283,7 @@ span[name=existingImages] img{
 	min-width: 90px;
 }
 .listViewEntriesTable .searchField{
-	min-width: 100px;
+	min-width: 70px;
 }
 .paginationDiv .pageInfo {
 	border: 1px solid #ddd;
@@ -4816,6 +4836,18 @@ html,body,.baseContainer
 	.footerContainer{
 		height: 17px;
 	}
+	.infoUser{
+		bottom: 17px !important;
+	}
+	.iconsInFooter span{
+		font-size: 10px !important;
+	}
+	.iconsInFooter{
+		margin-top: 1px !important;
+	}
+	.userInfoFooter .mainBody{
+		bottom: 33px;
+	}
 	.logoFooter{
 		height: 13px;
 		margin-top: 3px;
@@ -5602,6 +5634,7 @@ select.form-control {
 	width: 500px;
 	margin-bottom: 2px;
 }
+.selectDashboard::after,
 .selectDashboradView::after{
 	height: 3px;
 	width: 100%;
@@ -5634,10 +5667,12 @@ select.form-control {
 	table-layout: fixed;
 	word-wrap: break-word;
 }
+.dashboardWidget .rowActivities .activityContainer > *,
 .dashboardWidget .rowActivities > *{
 	text-overflow: ellipsis;
 	overflow: hidden;
 	white-space: nowrap;
+	line-height: 14px;
 }
 .leftPanelOpen.siteBarRight{
 	width: calc(25% - 50px);
@@ -5649,17 +5684,105 @@ select.form-control {
 	display: inline;
 }
 .addWidgetDropDown.dropdown-menu > li{
-	display: inline-block;
-	padding: 2px;
+	display: flex;
+	padding: 0 2px;
 	width: 100%;
 	white-space: nowrap;
 }
 .addWidgetDropDown.dropdown-menu > li > a{
 	display: inline;
 }
-.addWidgetDropDown .removeWidgetFromList{
-	float: none;
-}
 .headerLinksMails .select2-selection__rendered:hover {
 	background: #f5f5f5 !important;
+}
+.leegendIcon{
+	margin: 0 5px 0 15px;
+	height: 15px;
+	width: 15px;
+	float: left;
+}
+.modal-fullscreen{
+	width: 98%;
+}
+.marginRight15{
+	margin-right: 15px;
+}
+.leftRecordActions .actions:hover .toolsAction,
+.rightRecordActions .actions:hover .toolsAction{
+	display: none;
+}
+.leftRecordActions .actions:hover,
+.rightRecordActions .actions:hover{
+	white-space: nowrap;
+	position: absolute;
+}
+.leftRecordActions > div,
+.leftRecordActions .actions:hover .actionImages,
+.rightRecordActions .actions:hover .actionImages{
+	display: inline-block !important;
+}
+.rightRecordActions .actions:hover{
+	right: 7px;
+}
+td.rightRecordActions.medium{
+	padding-top: 0px!important;
+	padding-bottom: 0px!important;
+}
+.rightRecordActions .actions{
+	padding-top: 8px;
+}
+.leftRecordActions .actions:hover + div .unreviewed{
+	margin-left: 20px;
+}
+.leftRecordActions .actions{
+	background: inherit;
+	padding: 4px 2px 0 0;
+}
+.listViewEntries{
+	background: #fff;
+}
+.leftRecordActions{
+	background: inherit;
+}
+.leftRecordActions .actions .actionImages a{
+	color: inherit;
+}
+.listViewSearchTd{
+	width: 1%;
+}
+.openStreetMapModalBody .descriptionContainer{
+	max-height: 150px;
+	overflow: auto;
+}
+.openStreetMapModalHeader .searchValue {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.openStreetMapModalHeader .radius{
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+.activityContainer{
+	padding-top: 5px;
+	padding-left: 35px;
+}
+.bigLabel{
+	font-size: 100%;
+    font-weight: bold;
+	display: block;
+    padding: .7em .5em;
+}
+.modalContainer + .ui-autocomplete {
+	z-index: 100000;
+}
+.marginIcon {
+	margin-left: .3em;
+}
+.addReletedRecordBtn {
+    top: 20px;
+    right: 30px;
+    position: absolute;
+}
+.queuqActionImages .glyphicon{
+	top: -1px;
 }

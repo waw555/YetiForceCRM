@@ -12,7 +12,7 @@
 class OSSTimeControl_InRelation_View extends Vtiger_RelatedList_View
 {
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$relatedModuleName = $request->get('relatedModule');
@@ -46,6 +46,21 @@ class OSSTimeControl_InRelation_View extends Vtiger_RelatedList_View
 		if (!empty($orderBy)) {
 			$relationListView->set('orderby', $orderBy);
 			$relationListView->set('sortorder', $sortOrder);
+		}
+		$searchParmams = $request->get('search_params');
+		if (empty($searchParmams) || !is_array($searchParmams)) {
+			$searchParmams = [];
+		}
+		$transformedSearchParams = $relationListView->get('query_generator')->parseBaseSearchParamsToCondition($searchParmams);
+		$relationListView->set('search_params', $transformedSearchParams);
+		//To make smarty to get the details easily accesible
+		foreach ($searchParmams as $fieldListGroup) {
+			foreach ($fieldListGroup as $fieldSearchInfo) {
+				$fieldSearchInfo['searchValue'] = $fieldSearchInfo[2];
+				$fieldSearchInfo['fieldName'] = $fieldName = $fieldSearchInfo[0];
+				$fieldSearchInfo['specialOption'] = $fieldSearchInfo[3];
+				$searchParmams[$fieldName] = $fieldSearchInfo;
+			}
 		}
 		$models = $relationListView->getEntries($pagingModel);
 		$links = $relationListView->getLinks();
@@ -96,6 +111,7 @@ class OSSTimeControl_InRelation_View extends Vtiger_RelatedList_View
 		$viewer->assign('IS_EDITABLE', $relationModel->isEditable());
 		$viewer->assign('IS_DELETABLE', $relationModel->isDeletable());
 		$viewer->assign('USER_MODEL', Users_Record_Model::getCurrentUserModel());
+		$viewer->assign('SEARCH_DETAILS', $searchParmams);
 		$viewer->assign('VIEW', $request->get('view'));
 		return $viewer->view('RelatedList.tpl', $moduleName, 'true');
 	}

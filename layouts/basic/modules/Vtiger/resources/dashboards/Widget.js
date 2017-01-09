@@ -311,7 +311,7 @@ jQuery.Class('Vtiger_Widget_Js', {
 		refreshContainerFooter.html('');
 		refreshContainer.progressIndicator();
 
-		if (this.paramCache) {
+		if (this.paramCache && widgetFilters.length > 0) {
 			thisInstance.setFilterToCache(params.url, params.data);
 		}
 
@@ -622,6 +622,12 @@ Vtiger_Widget_Js('Vtiger_Barchat_Widget_Js', {}, {
 		return {'chartData': [chartData], 'yMaxValue': yMaxValue, 'labels': xLabels};
 	},
 	loadChart: function () {
+		var isColored = false;
+		var container = this.getContainer();
+		var isColoredInput = container.find('.color');
+		if (isColoredInput.length) {
+			isColored = isColoredInput.val() == 0 ? false : true;
+		}
 		var data = this.generateChartData();
 		if (data['chartData'][0].length > 0) {
 			this.getPlotContainer(false).jqplot(data['chartData'], {
@@ -632,7 +638,8 @@ Vtiger_Widget_Js('Vtiger_Barchat_Widget_Js', {}, {
 					rendererOptions: {
 						showDataLabels: true,
 						dataLabels: 'value',
-						barDirection: 'vertical'
+						barDirection: 'vertical',
+						varyBarColor: isColored
 					},
 					pointLabels: {show: true, edgeTolerance: -15}
 				},
@@ -642,7 +649,8 @@ Vtiger_Widget_Js('Vtiger_Barchat_Widget_Js', {}, {
 						renderer: jQuery.jqplot.CategoryAxisRenderer,
 						ticks: data['labels'],
 						tickOptions: {
-							angle: -45
+							angle: -45,
+							labelPosition: 'auto'
 						}
 					},
 					yaxis: {
@@ -671,7 +679,6 @@ Vtiger_Widget_Js('Vtiger_Barchat_Widget_Js', {}, {
 		var data = container.find('.widgetData').val();
 		var dataInfo = JSON.parse(data);
 		this.getContainer().on('jqplotDataClick', function (ev, seriesIndex, pointIndex, arguments) {
-			console.log(dataInfo[pointIndex]);
 			var url = dataInfo[pointIndex][2];
 			window.location.href = url;
 		});
@@ -679,6 +686,12 @@ Vtiger_Widget_Js('Vtiger_Barchat_Widget_Js', {}, {
 });
 Vtiger_Barchat_Widget_Js('Vtiger_Horizontal_Widget_Js', {}, {
 	loadChart: function () {
+		var isColored = false;
+		var container = this.getContainer();
+		var isColoredInput = container.find('.color');
+		if (isColoredInput.length) {
+			isColored = isColoredInput.val() == 0 ? false : true;
+		}
 		var data = this.generateChartData();
 		this.getPlotContainer(false).jqplot(data['chartData'], {
 			title: data['title'],
@@ -689,7 +702,8 @@ Vtiger_Barchat_Widget_Js('Vtiger_Horizontal_Widget_Js', {}, {
 				pointLabels: {show: true, location: 'e', edgeTolerance: -15},
 				shadowAngle: 135,
 				rendererOptions: {
-					barDirection: 'horizontal'
+					barDirection: 'horizontal',
+					varyBarColor: isColored
 				}
 			},
 			axes: {
@@ -711,6 +725,7 @@ Vtiger_Barchat_Widget_Js('Vtiger_Horizontal_Widget_Js', {}, {
 				labels: data['data_labels']
 			}
 		});
+		this.registerSectionClick();
 	}
 });
 Vtiger_Barchat_Widget_Js('Vtiger_Line_Widget_Js', {}, {
@@ -863,68 +878,8 @@ Vtiger_Widget_Js('YetiForce_Charts_Widget_Js', {}, {
 			instance = new chartClass();
 			instance.setContainer(container);
 			instance.loadChart();
+			instance.postInitializeCalls();
 		}
-
-	}
-});
-Vtiger_Widget_Js('Vtiger_Tagcloud_Widget_Js', {}, {
-	postLoadWidget: function () {
-		this._super();
-		this.registerTagCloud();
-		this.registerTagClickEvent();
-	},
-	registerTagCloud: function () {
-		jQuery('#tagCloud').find('a').tagcloud({
-			size: {
-				start: parseInt('12'),
-				end: parseInt('30'),
-				unit: 'px'
-			},
-			color: {
-				start: "#0266c9",
-				end: "#759dc4"
-			}
-		});
-	},
-	registerChangeEventForModulesList: function () {
-		jQuery('#tagSearchModulesList').on('change', function (e) {
-			var modulesSelectElement = jQuery(e.currentTarget);
-			if (modulesSelectElement.val() == 'all') {
-				jQuery('[name="tagSearchModuleResults"]').removeClass('hide');
-			} else {
-				jQuery('[name="tagSearchModuleResults"]').removeClass('hide');
-				var selectedOptionValue = modulesSelectElement.val();
-				jQuery('[name="tagSearchModuleResults"]').filter(':not(#' + selectedOptionValue + ')').addClass('hide');
-			}
-		});
-	},
-	registerTagClickEvent: function () {
-		var thisInstance = this;
-		var container = this.getContainer();
-		container.on('click', '.tagName', function (e) {
-			var tagElement = jQuery(e.currentTarget);
-			var tagId = tagElement.data('tagid');
-			var params = {
-				'module': app.getModuleName(),
-				'view': 'TagCloudSearchAjax',
-				'tag_id': tagId,
-				'tag_name': tagElement.text()
-			}
-			AppConnector.request(params).then(
-					function (data) {
-						var params = {
-							'data': data,
-							'css': {'min-width': '40%'}
-						}
-						app.showModalWindow(params);
-						thisInstance.registerChangeEventForModulesList();
-					}
-			)
-		});
-	},
-	postRefreshWidget: function () {
-		this._super();
-		this.registerTagCloud();
 	}
 });
 
@@ -1282,7 +1237,7 @@ Vtiger_Widget_Js('YetiForce_Calendar_Widget_Js', {}, {
 				url += '&search_params=[[';
 				var owner = container.find('.widgetFilter.owner option:selected');
 				if (owner.val() != 'all') {
-					url += '["assigned_user_id","c","' + owner.data('name') + '"],';
+					url += '["assigned_user_id","c","' + owner.val() + '"],';
 				}
 				if (parent.find('.widgetFilterSwitch').length > 0) {
 					var status = parent.find('.widgetFilterSwitch').data();
@@ -1379,7 +1334,7 @@ Vtiger_Widget_Js('YetiForce_Calendaractivities_Widget_Js', {}, {
 			url += '&search_params=[[';
 			var owner = container.find('.widgetFilter.owner option:selected');
 			if (owner.val() != 'all') {
-				url += '["assigned_user_id","c","' + owner.data('name') + '"],';
+				url += '["assigned_user_id","c","' + owner.val() + '"],';
 			}
 			url += '["activitystatus","e","' + status + '"]]]';
 			window.location.href = url;
@@ -1509,3 +1464,105 @@ YetiForce_Bar_Widget_Js('YetiForce_Leadsbysource_Widget_Js', {}, {
 		});
 	}
 });
+Vtiger_Pie_Widget_Js('YetiForce_Closedticketsbypriority_Widget_Js', {}, {
+	generateData: function () {
+		var container = this.getContainer();
+		var jData = container.find('.widgetData').val();
+		var data = JSON.parse(jData);
+		var chartData = [];
+		var colorData = [];
+		var urlData = [];
+		for (var index in data) {
+			var row = data[index];
+			var rowData = [row.name, row.count];
+			chartData.push(rowData);
+			colorData.push(row.color);
+			urlData.push(row.url);
+		}
+
+		return {'chartData': chartData, color: colorData, url: urlData};
+	},
+	loadChart: function () {
+		var chartData = this.generateData();
+		if (chartData['chartData'].length > 0) {
+			this.getPlotContainer(false).jqplot([chartData['chartData']], {
+				seriesDefaults: {
+					renderer: jQuery.jqplot.PieRenderer,
+					rendererOptions: {
+						showDataLabels: true,
+						dataLabels: 'value'
+					}
+				},
+				seriesColors: chartData['color'],
+				legend: {
+					show: true,
+					location: 'e'
+				},
+				title: chartData['title']
+			});
+			this.registerSectionClick();
+		}
+	},
+	registerSectionClick: function () {
+		var chartData = this.generateData();
+		this.getContainer().on('jqplotDataClick', function (ev, seriesIndex, pointIndex, arguments) {
+			var url = chartData['url'][pointIndex];
+			window.location.href = url;
+		});
+	}
+});
+Vtiger_Barchat_Widget_Js('YetiForce_Closedticketsbyuser_Widget_Js', {}, {});
+YetiForce_Bar_Widget_Js('YetiForce_Accountsbyindustry_Widget_Js', {}, {
+	registerSectionClick: function () {
+		var thisInstance = this;
+		var chartData = thisInstance.generateData();
+		thisInstance.getPlotContainer().bind("plothover", function (event, pos, item) {
+			if (item) {
+				$(this).css('cursor', 'pointer');
+			} else {
+				$(this).css('cursor', 'auto');
+			}
+		});
+		thisInstance.getPlotContainer().bind("plotclick", function (event, pos, item) {
+			if (item) {
+				$(chartData['links']).each(function () {
+					if (item.seriesIndex == this[0])
+						window.location.href = this[1];
+				});
+			}
+		});
+	}
+});
+Vtiger_Funnel_Widget_Js('YetiForce_Estimatedvaluebystatus_Widget_Js', {}, {
+	generateData: function () {
+		var container = this.getContainer();
+		var data = container.find('.widgetData').val();
+		var dataInfo = JSON.parse(data);
+		return dataInfo;
+	},
+	loadChart: function () {
+		var dataInfo = this.generateData();
+		if (dataInfo.length > 0) {
+			this.getPlotContainer(false).jqplot([dataInfo], {
+				seriesDefaults: {
+					renderer: jQuery.jqplot.FunnelRenderer,
+					rendererOptions: {
+						sectionMargin: 0,
+						widthRatio: 0.3,
+						showDataLabels: true,
+						dataLabelThreshold: 0,
+						dataLabels: 'label',
+						highlightMouseDown: true
+					}
+				},
+				legend: {
+					show: false,
+					location: 'e',
+				}
+			});
+			this.registerSectionClick();
+		}
+	}
+});
+Vtiger_Barchat_Widget_Js('YetiForce_Notificationsbysender_Widget_Js', {}, {});
+Vtiger_Barchat_Widget_Js('YetiForce_Notificationsbyrecipient_Widget_Js', {}, {});

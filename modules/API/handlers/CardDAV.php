@@ -1,56 +1,43 @@
 <?php
-/* +***********************************************************************************************************************************
- * The contents of this file are subject to the YetiForce Public License Version 1.1 (the "License"); you may not use this file except
- * in compliance with the License.
- * Software distributed under the License is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * See the License for the specific language governing rights and limitations under the License.
- * The Original Code is YetiForce.
- * The Initial Developer of the Original Code is YetiForce. Portions created by YetiForce are Copyright (C) www.yetiforce.com. 
- * All Rights Reserved.
- * *********************************************************************************************************************************** */
 
-class API_CardDAV_Handler extends VTEventHandler
+/**
+ * Api CardDAV Handler Class
+ * @package YetiForce.Handler
+ * @license licenses/License.html
+ * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
+ */
+class API_CardDAV_Handler
 {
 
-	function handleEvent($eventName, $entityData)
+	const DELTA_FIELDS = [
+		'Contacts' => ['firstname', 'lastname', 'email', 'secondary_email', 'phone', 'mobile'],
+		'OSSEmployees' => ['name', 'last_name', 'business_phone', 'business_mail', 'private_phone', 'private_mail']
+	];
+	const UPDATE_DETAIL = [
+		'Contacts' => ['vtiger_contactdetails', 'contactid'],
+		'OSSEmployees' => ['vtiger_ossemployees', 'ossemployeesid']
+	];
+
+	/**
+	 * EntityAfterSave handler function
+	 * @param App\EventHandler $eventHandler
+	 */
+	public function entityAfterSave(App\EventHandler $eventHandler)
 	{
-		if ($eventName == 'vtiger.entity.aftersave.final') {
-			$adb = PearDatabase::getInstance();
-			$log = LoggerManager::getInstance();
-			$recordId = $entityData->getId();
-			$moduleName = $entityData->getModuleName();
-			$isNew = $entityData->isNew();
-			if (!$isNew && $moduleName == 'Contacts') {
-				$updateRecord = false;
-				$vtEntityDelta = new VTEntityDelta();
-				$delta = $vtEntityDelta->getEntityDelta($moduleName, $recordId, true);
-				$delta = array_change_key_case($delta, CASE_LOWER);
-				$fields = array('firstname', 'lastname', 'email', 'secondary_email', 'phone', 'mobile');
-				foreach ($fields as $val) {
-					if (isset($delta[$val])) {
-						$updateRecord = true;
-						break;
-					}
-				}
-				if ($updateRecord) {
-					$adb->pquery('UPDATE vtiger_contactdetails SET dav_status = ? WHERE contactid = ?', array(1, $recordId));
-				}
-			}
-			if (!$isNew && $moduleName == 'OSSEmployees') {
-				$updateRecord = false;
-				$vtEntityDelta = new VTEntityDelta();
-				$delta = $vtEntityDelta->getEntityDelta($moduleName, $recordId, true);
-				$delta = array_change_key_case($delta, CASE_LOWER);
-				$fields = array('name', 'last_name', 'business_phone', 'business_mail', 'private_phone', 'private_mail');
-				foreach ($fields as $val) {
-					if (isset($delta[$val])) {
-						$updateRecord = true;
-						break;
-					}
-				}
-				if ($updateRecord) {
-					$adb->pquery('UPDATE vtiger_ossemployees SET dav_status = ? WHERE ossemployeesid = ?', array(1, $recordId));
-				}
+		$moduleName = $eventHandler->getModuleName();
+		$recordModel = $eventHandler->getRecordModel();
+		$isNew = $recordModel->isNew();
+		if ($isNew) {
+			return true;
+		}
+		$delta = $recordModel->getPreviousValue();
+		foreach (static::DELTA_FIELDS[$moduleName] as &$fieldName) {
+			if (isset($delta[$fieldName])) {
+				$info = static::UPDATE_DETAIL[$moduleName];
+				\App\Db::getInstance()->createCommand()
+					->update($info[0], ['dav_status' => 1], [$info[1] => $recordModel->getId()])
+					->execute();
+				return true;
 			}
 		}
 	}

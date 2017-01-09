@@ -16,24 +16,23 @@ require_once 'include/Webservices/Revise.php';
 require_once 'include/Webservices/Retrieve.php';
 require_once 'include/Webservices/DataTransform.php';
 require_once 'modules/Vtiger/CRMEntity.php';
-require_once 'include/QueryGenerator/QueryGenerator.php';
-require_once 'include/events/include.inc';
+require_once 'include/events/include.php';
 
 class Import_Data_Action extends Vtiger_Action_Controller
 {
 
-	var $id;
-	var $user;
-	var $module;
-	var $type;
-	var $fieldMapping;
-	var $mergeType;
-	var $mergeFields;
-	var $defaultValues;
-	var $importedRecordInfo = [];
+	public $id;
+	public $user;
+	public $module;
+	public $type;
+	public $fieldMapping;
+	public $mergeType;
+	public $mergeFields;
+	public $defaultValues;
+	public $importedRecordInfo = [];
 	protected $allPicklistValues = [];
 	protected $inventoryFieldMapData = [];
-	var $batchImport = true;
+	public $batchImport = true;
 	public $entitydata = [];
 	static $IMPORT_RECORD_NONE = 0;
 	static $IMPORT_RECORD_CREATED = 1;
@@ -70,7 +69,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		$defaultValues = array();
 		if (!empty($this->defaultValues)) {
 			if (!is_array($this->defaultValues)) {
-				$this->defaultValues = \includes\utils\Json::decode($this->defaultValues);
+				$this->defaultValues = \App\Json::decode($this->defaultValues);
 			}
 			if ($this->defaultValues != null) {
 				$defaultValues = $this->defaultValues;
@@ -119,9 +118,6 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		$moduleModel = Vtiger_Module_Model::getInstance($this->module);
 		// pre fetch the fields and premmisions of module
 		Vtiger_Field_Model::getAllForModule($moduleModel);
-		if ($this->user->is_admin == 'off') {
-			Vtiger_Field_Model::preFetchModuleFieldPermission($moduleModel->getId());
-		}
 		if (method_exists($focus, 'createRecords')) {
 			$focus->createRecords($this);
 		} else {
@@ -180,8 +176,6 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		$moduleMeta = $moduleHandler->getMeta();
 		$moduleObjectId = $moduleMeta->getEntityId();
 		$moduleFields = $moduleMeta->getModuleFields();
-
-		$entityData = [];
 		$tableName = Import_Utils_Helper::getDbTableName($this->user);
 		$sql = 'SELECT * FROM %s  WHERE temp_status = %s';
 		$sql = sprintf($sql, $tableName, Import_Data_Action::$IMPORT_RECORD_NONE);
@@ -193,8 +187,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		}
 
 		if ($this->batchImport) {
-			$configReader = new Import_Config_Model();
-			$importBatchLimit = $configReader->get('importBatchLimit');
+			$importBatchLimit = \AppConfig::module('Import', 'BATCH_LIMIT');
 			$sql .= sprintf(' LIMIT %s', $importBatchLimit);
 		}
 		$result = $adb->query($sql);
@@ -230,32 +223,24 @@ class Import_Data_Action extends Vtiger_Action_Controller
 				$entityInfo = $focus->importRecord($this, $fieldData);
 			} else {
 				if (!empty($mergeType) && $mergeType != Import_Utils_Helper::$AUTO_MERGE_NONE) {
-
-					$queryGenerator = new QueryGenerator($moduleName, $this->user);
-					$customView = new CustomView($moduleName);
-					$viewId = $customView->getViewIdByName('All', $moduleName);
+					$queryGenerator = new App\QueryGenerator($moduleName, $this->user->id);
+					$viewId = App\CustomView::getInstance($moduleName)->getViewIdByName('All');
 					if (!empty($viewId)) {
 						$queryGenerator->initForCustomViewById($viewId);
 					} else {
 						$queryGenerator->initForDefaultCustomView();
 					}
 
-					$fieldsList = array('id');
+					$fieldsList = ['id'];
 					$queryGenerator->setFields($fieldsList);
 
 					$mergeFields = $this->mergeFields;
-					if ($queryGenerator->getWhereFields() && $mergeFields) {
-						$queryGenerator->addConditionGlue(QueryGenerator::$AND);
-					}
 					foreach ($mergeFields as $index => $mergeField) {
-						if ($index != 0) {
-							$queryGenerator->addConditionGlue(QueryGenerator::$AND);
-						}
 						$comparisonValue = $fieldData[$mergeField];
 						$fieldInstance = $moduleFields[$mergeField];
 						if ($fieldInstance->getFieldDataType() == 'owner') {
 							$userId = getUserId_Ol($comparisonValue);
-							$comparisonValue = \includes\fields\Owner::getUserLabel($userId);
+							$comparisonValue = \App\Fields\Owner::getUserLabel($userId);
 						}
 						if ($fieldInstance->getFieldDataType() == 'reference') {
 							if (strpos($comparisonValue, '::::') > 0) {
@@ -267,11 +252,11 @@ class Import_Data_Action extends Vtiger_Action_Controller
 								$comparisonValue = trim($referenceFileValueComponents[1]);
 							}
 						}
-						$queryGenerator->addCondition($mergeField, $comparisonValue, 'e', '', '', '', true);
+						$queryGenerator->addCondition($mergeField, $comparisonValue, 'e');
 					}
-					$query = $queryGenerator->getQuery();
-					$duplicatesResult = $adb->query($query);
-					$noOfDuplicates = $adb->num_rows($duplicatesResult);
+					$query = $queryGenerator->createQuery();
+					$duplicatesResult = $query->all();
+					$noOfDuplicates = count($duplicatesResult);
 
 					if ($noOfDuplicates > 0) {
 						if ($mergeType == Import_Utils_Helper::$AUTO_MERGE_IGNORE) {
@@ -280,11 +265,11 @@ class Import_Data_Action extends Vtiger_Action_Controller
 							$mergeType == Import_Utils_Helper::$AUTO_MERGE_MERGEFIELDS) {
 
 							for ($index = 0; $index < $noOfDuplicates - 1; ++$index) {
-								$duplicateRecordId = $adb->query_result($duplicatesResult, $index, $fieldColumnMapping['id']);
+								$duplicateRecordId = $duplicatesResult[$index][$fieldColumnMapping['id']];
 								$entityId = vtws_getId($moduleObjectId, $duplicateRecordId);
 								vtws_delete($entityId, $this->user);
 							}
-							$baseRecordId = $adb->query_result($duplicatesResult, $noOfDuplicates - 1, $fieldColumnMapping['id']);
+							$baseRecordId = $duplicatesResult[$noOfDuplicates - 1][$fieldColumnMapping['id']];
 							$baseEntityId = vtws_getId($moduleObjectId, $baseRecordId);
 
 							if ($mergeType == Import_Utils_Helper::$AUTO_MERGE_OVERWRITE) {
@@ -339,7 +324,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 						$inventoryFieldData = $this->transformInventoryForImport($inventoryFieldData);
 						$fieldData['inventoryData'] = $inventoryFieldData;
 					}
-					if ($fieldData == null) {
+					if ($fieldData === null) {
 						$entityInfo = null;
 					} else {
 						if ($this->type) {
@@ -355,7 +340,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 					}
 				}
 			}
-			if ($entityInfo == null) {
+			if ($entityInfo === null) {
 				$entityInfo = array('id' => null, 'status' => self::$IMPORT_RECORD_FAILED);
 			} else if ($createRecord) {
 				$entityInfo['status'] = self::$IMPORT_RECORD_CREATED;
@@ -363,15 +348,19 @@ class Import_Data_Action extends Vtiger_Action_Controller
 			if (empty($handlerOn) && ($createRecord || $mergeType == Import_Utils_Helper::$AUTO_MERGE_MERGEFIELDS || $mergeType == Import_Utils_Helper::$AUTO_MERGE_OVERWRITE)) {
 				$entityIdComponents = vtws_getIdComponents($entityInfo['id']);
 				$recordId = $entityIdComponents[1];
-				\includes\Record::updateLabel($this->module, $recordId);
+				\App\Record::updateLabel($this->module, $recordId);
 			}
 
 			$this->importedRecordInfo[$rowId] = $entityInfo;
 			$this->updateImportStatus($rowId, $entityInfo);
 		}
 		if (empty($handlerOn) && $this->entityData) {
-			$entity = new VTEventsManager($adb);
-			$entity->triggerEvent('vtiger.batchevent.save', $this->entityData);
+			$eventHandler = new App\EventHandler();
+			$eventHandler->setModuleName($moduleName);
+			$eventHandler->setParams([
+				'rows' => $this->entityData,
+			]);
+			$eventHandler->trigger('EntityImportSave');
 		}
 		$this->entityData = null;
 		$result = null;
@@ -394,18 +383,18 @@ class Import_Data_Action extends Vtiger_Action_Controller
 						$value = $this->transformInventoryReference($value);
 					} elseif ($fieldInstance->getName() == 'Currency') {
 						$curencyName = $value;
-						$value = getCurrencyId($entityLabel);
+						$value = \App\Currency::getCurrencyIdByName($entityLabel);
 						$currencyParam = $data['currencyparam'];
 						$currencyParam = $fieldInstance->getCurrencyParam([], $currencyParam);
 						$newCurrencyParam = [];
 						foreach ($currencyParam as $key => $currencyData) {
-							$valueData = getCurrencyId($entityLabel);
+							$valueData = \App\Currency::getCurrencyIdByName($entityLabel);
 							if ($valueData) {
 								$currencyData['value'] = $valueData;
 								$newCurrencyParam[$valueData] = $currencyData;
 							}
 						}
-						$data['currencyparam'] = \includes\utils\Json::encode($newCurrencyParam);
+						$data['currencyparam'] = \App\Json::encode($newCurrencyParam);
 					} elseif (array_key_exists($fieldName, $maps)) {
 						$value = $this->transformInventoryFieldFromMap($value, $maps[$fieldName]);
 					}
@@ -479,7 +468,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 	{
 		$ownerId = getUserId_Ol(trim($fieldValue));
 		if (empty($ownerId)) {
-			$ownerId = getGrpId($fieldValue);
+			$ownerId = \App\Fields\Owner::getGroupId($fieldValue);
 		}
 		if (empty($ownerId) && isset($defaultFieldValues[$fieldName])) {
 			$ownerId = $defaultFieldValues[$fieldName];
@@ -498,7 +487,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		foreach ($owners as $owner) {
 			$ownerId = getUserId_Ol(trim($owner));
 			if (empty($ownerId)) {
-				$ownerId = getGrpId($owner);
+				$ownerId = \App\Fields\Owner::getGroupId($owner);
 			}
 			if (empty($ownerId) && isset($defaultFieldValues[$fieldName])) {
 				$ownerId = $defaultFieldValues[$fieldName];
@@ -542,7 +531,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 				$referenceModuleName = trim($fieldValueDetails[0]);
 				$entityLabel = trim($fieldValueDetails[1]);
 				if (vtlib\Functions::getModuleId($referenceModuleName)) {
-					$entityId = getEntityId($referenceModuleName, $entityLabel);
+					$entityId = getEntityId($referenceModuleName, decode_html($entityLabel));
 				} else {
 					$referencedModules = $fieldInstance->getReferenceList();
 					if (isset($defaultFieldValues[$fieldName])) {
@@ -562,9 +551,9 @@ class Import_Data_Action extends Vtiger_Action_Controller
 							$referenceEntityId = $this->user->id;
 						}
 					} elseif ($referenceModule == 'Currency') {
-						$referenceEntityId = getCurrencyId($entityLabel);
+						$referenceEntityId = \App\Currency::getCurrencyIdByName($entityLabel);
 					} else {
-						$referenceEntityId = getEntityId($referenceModule, $entityLabel);
+						$referenceEntityId = getEntityId($referenceModule, decode_html($entityLabel));
 					}
 					if ($referenceEntityId != 0) {
 						$entityId = $referenceEntityId;
@@ -572,7 +561,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 					}
 				}
 
-				if ($entityId == false) {
+				if ($entityId === false) {
 					$referenceModuleName = AppRequest::get($fieldName . '_defaultvalue');
 				}
 			}
@@ -673,7 +662,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 				$fieldData[$fieldName] = $this->transformSharedOwner($fieldValue, $defaultFieldValues);
 			} elseif ($fieldInstance->getFieldDataType() == 'multipicklist') {
 				$fieldData[$fieldName] = $this->transformMultipicklist($fieldInstance, $fieldValue, $defaultFieldValues);
-			} elseif (in_array($fieldInstance->getFieldDataType(), Vtiger_Field_Model::$REFERENCE_TYPES)) {
+			} elseif (in_array($fieldInstance->getFieldDataType(), Vtiger_Field_Model::$referenceTypes)) {
 				$fieldData[$fieldName] = $this->transformReference($moduleMeta, $fieldInstance, $fieldValue, $defaultFieldValues);
 			} elseif ($fieldInstance->getFieldDataType() == 'picklist') {
 				$fieldData[$fieldName] = $this->transformPicklist($moduleMeta, $fieldInstance, $fieldValue, $defaultFieldValues);
@@ -684,7 +673,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 				$fieldData[$fieldName] = $this->transformTree($fieldInstance, $fieldValue, $defaultFieldValues);
 			} else {
 				if ($fieldInstance->getFieldDataType() == 'datetime' && !empty($fieldValue)) {
-					if ($fieldValue == null || $fieldValue == '0000-00-00 00:00:00') {
+					if ($fieldValue === null || $fieldValue == '0000-00-00 00:00:00') {
 						$fieldValue = '';
 					}
 					$valuesList = explode(' ', $fieldValue);
@@ -697,7 +686,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 					$fieldData[$fieldName] = $fieldValue;
 				}
 				if ($fieldInstance->getFieldDataType() == 'date' && !empty($fieldValue)) {
-					if ($fieldValue == null || $fieldValue == '0000-00-00') {
+					if ($fieldValue === null || $fieldValue == '0000-00-00') {
 						$fieldValue = '';
 					}
 					$fieldValue = getValidDBInsertDateValue($fieldValue);
@@ -765,13 +754,14 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		$entityIdComponents = vtws_getIdComponents($entityIdInfo['id']);
 		$recordId = $entityIdComponents[1];
 
-		\includes\Record::updateLabel($moduleName, $recordId);
+		\App\Record::updateLabel($moduleName, $recordId);
 
 		$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName);
 		$focus = $recordModel->getEntity();
 		$focus->id = $recordId;
 		$focus->column_fields = $fieldData;
-		$this->entityData[] = VTEntityData::fromCRMEntity($focus);
+		$recordModel->setId($recordId);
+		$this->entityData[] = $recordModel;
 		$focus->updateMissingSeqNumber($moduleName);
 		return $entityIdInfo;
 	}
@@ -818,8 +808,6 @@ class Import_Data_Action extends Vtiger_Action_Controller
 	{
 		$current_user = vglobal('current_user');
 		$scheduledImports = self::getScheduledImport();
-		$vtigerMailer = new vtlib\Mailer();
-		$vtigerMailer->IsHTML(true);
 		foreach ($scheduledImports as $scheduledId => $importDataController) {
 			$current_user = $importDataController->user;
 			$importDataController->batchImport = false;
@@ -842,16 +830,17 @@ class Import_Data_Action extends Vtiger_Action_Controller
 				$importResult . '<br/><br/>' .
 				'We recommend you to login to the CRM and check few records to confirm that the import has been successful.';
 
-			$userName = getFullNameFromArray('Users', $importDataController->user->column_fields);
+			$userName = \vtlib\Deprecated::getFullNameFromArray('Users', $importDataController->user->column_fields);
 			$userEmail = $importDataController->user->email1;
-			$vtigerMailer->to = array(array($userEmail, $userName));
-			$vtigerMailer->Subject = $emailSubject;
-			$vtigerMailer->Body = $emailData;
-			//$vtigerMailer->Send();
+			\App\Mailer::addMail([
+				//'smtp_id' => 1,
+				'to' => [$userEmail => $userName],
+				'subject' => $emailSubject,
+				'content' => $emailData,
+			]);
 
 			$importDataController->finishImport();
 		}
-		vtlib\Mailer::dispatchQueue(null);
 	}
 
 	public static function getScheduledImport()
@@ -872,7 +861,7 @@ class Import_Data_Action extends Vtiger_Action_Controller
 	/*
 	 *  Function to get Record details of import
 	 *  @parms $user <User Record Model> Current Users
-	 * 	@parms $user <String> Imported module
+	 * 	@parms $user string Imported module
 	 *  @returns <Array> Import Records with the list of skipped records and failed records
 	 */
 
@@ -931,23 +920,18 @@ class Import_Data_Action extends Vtiger_Action_Controller
 
 	public function createRecordByModel($moduleName, $fieldData, $user)
 	{
-		$previousBulkSaveMode = vglobal('VTIGER_BULK_SAVE_MODE');
-		vglobal('VTIGER_BULK_SAVE_MODE', false);
 		$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName);
 		if (isset($fieldData['inventoryData'])) {
 			$inventoryData = $fieldData['inventoryData'];
 			unset($fieldData['inventoryData']);
 		}
-		$fieldData = $this->parseData($moduleName, $fieldData);
 		if ($inventoryData) {
-			$fieldData = $this->setInventoryDataToRequest($fieldData, $inventoryData);
+			$recordModel->setInventoryRawData($this->setInventoryDataToRequest($inventoryData));
 		}
-		foreach ($fieldData as $fieldName => $value) {
+		foreach ($this->parseData($moduleName, $fieldData) as $fieldName => &$value) {
 			$recordModel->set($fieldName, $value);
 		}
-
 		$recordModel->save();
-		vglobal('VTIGER_BULK_SAVE_MODE', $previousBulkSaveMode);
 		$ID = $recordModel->getId();
 		if (!empty($ID)) {
 			$adb = PearDatabase::getInstance();
@@ -1012,22 +996,26 @@ class Import_Data_Action extends Vtiger_Action_Controller
 		return $element;
 	}
 
-	public function setInventoryDataToRequest($fieldData, $inventoryData = [])
+	/**
+	 * Function creates advanced block data object
+	 * @param array $inventoryData
+	 * @return \Vtiger_Base_Model
+	 */
+	public function setInventoryDataToRequest($inventoryData = [])
 	{
-		$invDat = [];
+		$inventoryModel = new Vtiger_Base_Model();
 		$inventoryFieldModel = Vtiger_InventoryField_Model::getInstance($this->module);
 		$jsonFields = $inventoryFieldModel->getJsonFields();
 		foreach ($inventoryData as $index => $data) {
 			$i = $index + 1;
-			$invDat['inventoryItemsNo'] = $i;
+			$inventoryModel->set('inventoryItemsNo', $i);
 			foreach ($data as $name => $value) {
 				if (in_array($name, $jsonFields)) {
-					$value = \includes\utils\Json::decode($value);
+					$value = \App\Json::decode($value);
 				}
-				$invDat[$name . $i] = $value;
+				$inventoryModel->set($name . $i, $value);
 			}
 		}
-		$fieldData['inventoryData'] = new Vtiger_Request($invDat);
-		return $fieldData;
+		return $inventoryModel;
 	}
 }

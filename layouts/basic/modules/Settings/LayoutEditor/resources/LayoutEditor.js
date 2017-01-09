@@ -581,7 +581,7 @@ jQuery.Class('Settings_LayoutEditor_Js', {
 							var pickListValuesArray = pickListValueElement.val();
 							var pickListValuesArraySize = pickListValuesArray.length;
 							var specialChars = /["]/;
-							if (fieldNameValue.toLowerCase() === 'status') {
+							if (fieldNameValue.toLowerCase() === 'status' || 'picklist' === fieldNameValue.toLowerCase()) {
 								var message = app.vtranslate('JS_RESERVED_PICKLIST_NAME');
 								jQuery('[name="fieldName"]', form).validationEngine('showPrompt', message, 'error', 'bottomLeft', true);
 								return false;
@@ -612,7 +612,7 @@ jQuery.Class('Settings_LayoutEditor_Js', {
 							var treeListElement = form.find('select.TreeList');
 							if (treeListElement.val() == '-') {
 								var message = app.vtranslate('JS_FIELD_CAN_NOT_BE_EMPTY');
-								form.find('.select2-container.TreeList').validationEngine('showPrompt', message, 'error', 'bottomLeft', true);
+								form.find('.TreeList').validationEngine('showPrompt', message, 'error', 'bottomLeft', true);
 								return false;
 							}
 
@@ -1733,7 +1733,7 @@ jQuery.Class('Settings_LayoutEditor_Js', {
 			contents = jQuery('#layoutEditorContainer').find('.contents');
 		}
 		app.registerEventForDatePickerFields(contents);
-		app.registerEventForTimeFields(contents);
+		app.registerEventForClockPicker(contents);
 		app.changeSelectElementView(contents);
 
 		thisInstance.makeFieldsListSortable();
@@ -1783,7 +1783,7 @@ jQuery.Class('Settings_LayoutEditor_Js', {
 						});
 						var params = {};
 						params['module'] = container.find('[name="layoutEditorModules"]').val();
-						params['status'] = !state;
+						params['status'] = state ? 0 : 1;
 						app.saveAjax('setInventory', params).then(function (data) {
 							if (data.result) {
 								//Settings_Vtiger_Index_Js.showMessage({type: 'success', text: data.result.message});
@@ -1834,6 +1834,7 @@ jQuery.Class('Settings_LayoutEditor_Js', {
 			var id = editField.data('id');
 			var progress = jQuery.progressIndicator();
 			app.showModalWindow(null, "index.php?module=LayoutEditor&parent=Settings&view=CreateInventoryFields&mode=step2&type=" + selectedModule + "&mtype=" + mType + "&id=" + id, function (container) {
+				app.showPopoverElementView(container.find('.HelpInfoPopover'));
 				thisInstance.registerStep2(container, blockId);
 				progress.progressIndicator({'mode': 'hide'});
 			});

@@ -59,18 +59,16 @@ $languageStrings = [
 	'Warm' => 'Warm',
 	'Website' => 'Website',
 	/* YetiForce Lead Status */
-	'LBL_TO_REALIZE' => 'For processing',
-	'LBL_VERIFICATION_OF_DATA' => 'Data verification',
-	'LBL_PRELIMINARY_ANALYSIS_OF' => 'Initial analysis',
-	'LBL_ADVANCED_ANALYSIS' => 'Advanced analysis',
-	'LBL_INITIAL_ACQUISITION' => 'Initial obtaining',
-	'LBL_CONTACTS_IN_THE_FUTURE' => 'Contact in the future',
-	'LBL_LEAD_UNTAPPED' => ' Lead not obtained',
-	'LBL_LEAD_ACQUIRED' => 'Lead obtained',
+	'PLL_TO_REALIZE' => 'For processing',
+	'PLL_CONTACTS_IN_THE_FUTURE' => 'Contact in the future',
+	'PLL_LEAD_UNTAPPED' => 'Unobtained',
+	'PLL_LEAD_ACQUIRED' => 'For conversion',
+	'PLL_PENDING' => 'Pending',
+	'PLL_IN_REALIZATION' => 'In realization',
+	'PLL_INCORRECT' => 'Incorrect',
 	/* YetiForce */
 	'Contact Information' => 'Contact information',
 	'LBL_REGISTRATION_INFO' => 'Registration details',
-	'LBL_REQUIRES_VERIFICATION' => 'Data verification',
 	'Approval for phone calls' => 'Permission to call',
 	'Approval for email' => 'Permission to send emails',
 	//PICKLIST VALUES
@@ -106,7 +104,6 @@ $languageStrings = [
 	'LBL_RELATION' => 'Relation',
 	'LBL_LEGAL_FORM' => 'Legal form',
 	'LBL_TOO_MANY_ACCOUNTS_TO_CONVERT' => 'At least two Accounts meet the requirements for linking, go to : (Administration > Processes > Marketing processes > Conversion) %s',
-	'Campaign status' => 'Campaign status',
 ];
 
 $jsLanguageStrings = [

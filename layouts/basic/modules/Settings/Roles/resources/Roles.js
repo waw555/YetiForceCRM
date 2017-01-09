@@ -18,7 +18,6 @@ var Settings_Roles_Js = {
 			var target = $(e.currentTarget);
 			var field  = target.data('field');
 			
-			// TODO simiplify by pushing the retrieveSelectedRecords to library
 			var popupInstance = Vtiger_Popup_Js.getInstance();
 			popupInstance.show(target.data('url'));
 			popupInstance.retrieveSelectedRecords(function(data) {
@@ -135,7 +134,7 @@ var Settings_Roles_Js = {
 				var sourceRoleId = sourceGroup.data('roleid');
 
 				// Attempt to push parent-into-its own child hierarchy?
-				if (targetRole.indexOf(sourceRole) == 0) {
+				if (targetRole.indexOf(sourceRole + '::') == 0) {
 					// Sorry
 					return;
 				}
@@ -195,7 +194,6 @@ var Settings_Roles_Js = {
 				} else {
 					//If validation fails, form should submit again
 					form.removeData('submit');
-					// to avoid hiding of error message under the fixed nav bar
 					app.formAlignmentAfterValidation(form);
 				}
 				e.preventDefault();

@@ -21,6 +21,8 @@ $languageStrings = [
 	'FL_SOURCE' => 'Источник',
 	'FL_TYPE' => 'Тип',
 	'FL_STATUS' => 'Статус',
+	'FL_CAMPAIGN' => 'Кампания',
+	'FL_MEMBER_OF' => 'Parent Sales Opportunity',
 	//Picklist
 	'PLL_WEBSITE' => 'Сайт',
 	'PLL_PHONE' => 'Телефон',
@@ -54,4 +56,5 @@ $languageStrings = [
 	'LBL_SWITCHHEADER_ON_0' => 'Открыто',
 	'LBL_SWITCHHEADER_OFF_0' => 'Закрыто',
 	'LBL_HEADERSWITCH_OPEN_CLOSED' => 'Открыть/Закрыть',
+	'LBL_SHOW_HIERARCHY' => 'Иерархия',
 ];

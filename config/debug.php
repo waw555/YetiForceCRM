@@ -3,10 +3,24 @@
 
 $DEBUG_CONFIG = [
 	/* +***************************************************************
-	 * 	CRM 
+	 * 	Logger 
 	 * ************************************************************** */
-	// Enable log4php -> cache/logs/system.log
-	'LOG4PHP_DEBUG' => false,
+	// Enable saving logs to file. Values: false/true
+	'LOG_TO_FILE' => false,
+	// Enable displaying logs in debug console. Values: false/true
+	'LOG_TO_CONSOLE' => false,
+	// Enable saving logs profiling.  Values: false/true
+	'LOG_TO_PROFILE' => false,
+	// Level of saved/displayed logs
+	// Values: false = All / 3 = error and warning / ['error', 'warning', 'info', 'trace', 'profile'], 
+	'LOG_LEVELS' => false,
+	// Level of saved/displayed tracerts. // Values: int
+	'LOG_TRACE_LEVEL' => 0,
+	// Display Main Debug Console
+	'DISPLAY_DEBUG_CONSOLE' => false,
+	// List of IP addresses allowed to display debug console
+	// Values: false = All IPS / '192.168.1.10' / ['192.168.1.10','192.168.1.11']
+	'DEBUG_CONSOLE_ALLOWED_IPS' => false,
 	// Stop the running process of the system if there is and error in sql query
 	'SQL_DIE_ON_ERROR' => false,
 	// Displays information about the tracking code when an error occurs. Available only with the active SQL_DIE_ON_ERROR = true

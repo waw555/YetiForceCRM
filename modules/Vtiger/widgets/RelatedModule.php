@@ -15,7 +15,7 @@ class Vtiger_RelatedModule_Widget extends Vtiger_Basic_Widget
 	public function getUrl()
 	{
 		$url = 'module=' . $this->Module . '&view=Detail&record=' . $this->Record . '&mode=showRelatedRecords&relatedModule=' . $this->Data['relatedmodule'] . '&page=1&limit=' . $this->Data['limit'] . '&col=' . $this->Data['columns'];
-		if(isset($this->Data['no_result_text'])){
+		if (isset($this->Data['no_result_text'])) {
 			$url .= '&r=' . $this->Data['no_result_text'];
 		}
 		return $url;
@@ -31,7 +31,7 @@ class Vtiger_RelatedModule_Widget extends Vtiger_Basic_Widget
 			$this->Config['tpl'] = 'Basic.tpl';
 			if ($this->Data['action'] == 1) {
 				$createPermission = $model->isPermitted('CreateView');
-				$this->Config['action'] = ($createPermission == true) ? 1 : 0;
+				$this->Config['action'] = ($createPermission === true) ? 1 : 0;
 				$this->Config['actionURL'] = $model->getQuickCreateUrl();
 			}
 			if (isset($this->Data['showAll'])) {
@@ -44,12 +44,12 @@ class Vtiger_RelatedModule_Widget extends Vtiger_Basic_Widget
 						case 1:
 							$whereConditionOff = [];
 							foreach ($switchHeaderData['value'] as $name => $value) {
-								$whereCondition[$name] = ['comparison' => 'NOT IN', 'value' => $value];
-								$whereConditionOff[$name] = ['comparison' => 'IN', 'value' => $value];
+								$whereCondition[] = [$name, 'n', implode(',', $value)];
+								$whereConditionOff[] = [$name, 'e', implode(',', $value)];
 							}
 							$this->getCheckboxLables($model, 'switchHeader', 'LBL_SWITCHHEADER_');
-							$this->Config['switchHeader']['on'] = \includes\utils\Json::encode($whereCondition);
-							$this->Config['switchHeader']['off'] = \includes\utils\Json::encode($whereConditionOff);
+							$this->Config['switchHeader']['on'] = \App\Json::encode($whereCondition);
+							$this->Config['switchHeader']['off'] = \App\Json::encode($whereConditionOff);
 							$whereCondition = [$whereCondition];
 							break;
 						default:
@@ -58,13 +58,23 @@ class Vtiger_RelatedModule_Widget extends Vtiger_Basic_Widget
 				}
 			}
 			if (isset($this->Data['checkbox']) && $this->Data['checkbox'] != '-') {
-				$whereCondition[][$this->Data['checkbox']] = 1;
-				$this->Config['checkbox']['on'] = \includes\utils\Json::encode([$this->Data['checkbox'] => 1]);
-				$this->Config['checkbox']['off'] = \includes\utils\Json::encode([$this->Data['checkbox'] => 0]);
+				if(strpos($this->Data['checkbox'], '.') !== false){
+					$separateData = explode('.', $this->Data['checkbox']);
+					$columnName = $separateData[1];
+				}else{
+					$columnName = $this->Data['checkbox'];
+				}
+				
+				$whereOnCondition[] = [$columnName, 'e', 1];
+				$whereOffCondition[] = [$columnName, 'e', 0];
+				$whereCondition =[$whereOnCondition];
+			
+				$this->Config['checkbox']['on'] = \App\Json::encode($whereOnCondition);
+				$this->Config['checkbox']['off'] = \App\Json::encode($whereOffCondition);
 				$this->getCheckboxLables($model, 'checkbox', 'LBL_SWITCH_');
 			}
 			if (!empty($whereCondition)) {
-				$this->Config['url'] .= '&whereCondition=' . \includes\utils\Json::encode($whereCondition);
+				$this->Config['url'] .= '&search_params=' . \App\Json::encode($whereCondition);
 			}
 			$widget = $this->Config;
 		}

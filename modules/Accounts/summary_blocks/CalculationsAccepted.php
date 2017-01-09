@@ -1,15 +1,17 @@
 <?php
-class CalculationsAccepted{
+
+class CalculationsAccepted
+{
+
 	public $name = 'Calculations accepted';
 	public $sequence = 1;
 	public $reference = 'SCalculations';
-	
-    public function process( $instance ) {
-		$db = PearDatabase::getInstance();
-		$calculations ='SELECT COUNT(1) FROM u_yf_scalculations
-				INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid=u_yf_scalculations.scalculationsid
-				WHERE vtiger_crmentity.deleted=0 AND u_yf_scalculations.accountid = ? AND u_yf_scalculations.scalculations_status = ?';
-		$resultCalculations = $db->pquery( $calculations, [$instance->getId(), 'PLL_ACCEPTED'] );
-		return (int) $db->getSingleValue($resultCalculations);
-    }
+
+	public function process($instance)
+	{
+		return (int) (new \App\Db\Query())->from('u_#__scalculations')
+				->innerJoin('vtiger_crmentity', 'u_#__scalculations.scalculationsid = vtiger_crmentity.crmid')
+				->where(['deleted' => 0, 'u_#__scalculations.accountid' => $instance->getId(), 'u_#__scalculations.scalculations_status' => 'PLL_ACCEPTED'])
+				->count(1);
+	}
 }

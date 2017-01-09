@@ -12,7 +12,7 @@
 class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('addRelation');
@@ -24,28 +24,25 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 
 	public function checkPermission(Vtiger_Request $request)
 	{
-		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
-
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission($moduleModel->getId());
+		$permission = $userPrivilegesModel->hasModulePermission($request->getModule());
 
 		if (!$permission) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	function preProcess(Vtiger_Request $request)
+	public function preProcess(Vtiger_Request $request)
 	{
 		return true;
 	}
 
-	function postProcess(Vtiger_Request $request)
+	public function postProcess(Vtiger_Request $request)
 	{
 		return true;
 	}
 
-	function process(Vtiger_Request $request)
+	public function process(Vtiger_Request $request)
 	{
 		$mode = $request->get('mode');
 		if (!empty($mode)) {
@@ -63,7 +60,7 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 	 * 		related_record_list		json encoded of list of related record ids
 	 */
 
-	function addRelation($request)
+	public function addRelation($request)
 	{
 		$sourceModule = $request->getModule();
 		$sourceRecordId = $request->get('src_record');
@@ -97,7 +94,7 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 	 * 		related_module			related module name
 	 * 		related_record_list		json encoded of list of related record ids
 	 */
-	function deleteRelation($request)
+	public function deleteRelation($request)
 	{
 		$sourceModule = $request->getModule();
 		$sourceRecordId = $request->get('src_record');
@@ -129,7 +126,7 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 	 * 		toRemove				list of related record to remove
 	 * 		toAdd					list of related record to add
 	 */
-	function updateRelation(Vtiger_Request $request)
+	public function updateRelation(Vtiger_Request $request)
 	{
 		$sourceModule = $request->getModule();
 		$sourceRecordId = $request->get('src_record');
@@ -182,7 +179,7 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 	 * Function to get the page count for reltedlist
 	 * @return total number of pages
 	 */
-	function getRelatedListPageCount(Vtiger_Request $request)
+	public function getRelatedListPageCount(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$relModules = $relatedModuleName = $request->get('relatedModule');
@@ -200,15 +197,18 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 		if (in_array('Comments', $relModules)) {
 			$totalCount = ModComments_Record_Model::getCommentsCount($parentId);
 		} elseif ($relatedModuleName == 'Updates') {
-			$count = (int) current(ModTracker_Record_Model::getUnreviewed($parentId, false, true));
+			$count = (int) ($unreviewed = current(ModTracker_Record_Model::getUnreviewed($parentId, false, true))) ? array_sum($unreviewed) : '';
 			$totalCount = $count ? $count : '';
 		} else {
 			$categoryCount = ['Products', 'OutsourcedProducts', 'Services', 'OSSOutsourcedServices'];
 			$pagingModel = new Vtiger_Paging_Model();
 			$parentRecordModel = Vtiger_Record_Model::getInstanceById($parentId, $moduleName);
 			foreach ($relModules as $relModule) {
+				if (!\App\Privilege::isPermitted($relModule)) {
+					continue;
+				}
 				$relationListView = Vtiger_RelationListView_Model::getInstance($parentRecordModel, $relModule, $label);
-				if (!\includes\Modules::isModuleActive($relModule) || !$relationListView->getRelationModel()) {
+				if (!$relationListView->getRelationModel()) {
 					continue;
 				}
 				if ($relatedModuleName == 'ProductsAndServices' && in_array($relModule, $categoryCount)) {
@@ -230,7 +230,7 @@ class Vtiger_RelationAjax_Action extends Vtiger_Action_Controller
 		$response->emit();
 	}
 
-	function updateFavoriteForRecord(Vtiger_Request $request)
+	public function updateFavoriteForRecord(Vtiger_Request $request)
 	{
 		$sourceModule = $request->getModule();
 		$relatedModule = $request->get('relatedModule');

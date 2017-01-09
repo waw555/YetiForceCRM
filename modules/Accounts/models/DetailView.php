@@ -36,7 +36,7 @@ class Accounts_DetailView_Model extends Vtiger_DetailView_Model
 		return $linkModelList;
 	}
 
-	function getDetailViewRelatedLinks()
+	public function getDetailViewRelatedLinks()
 	{
 		$recordModel = $this->getRecord();
 		$moduleName = $recordModel->getModuleName();
@@ -64,11 +64,11 @@ class Accounts_DetailView_Model extends Vtiger_DetailView_Model
 			'related' => 'Details'
 		];
 
-		if ($moduleName == 'Leads') {
-			$showPSTab = \includes\Modules::isModuleActive('OutsourcedProducts') || \includes\Modules::isModuleActive('Products') || \includes\Modules::isModuleActive('Services') || \includes\Modules::isModuleActive('OSSOutsourcedServices');
+		if ($moduleName === 'Leads') {
+			$showPSTab = (!AppConfig::module($moduleName, 'HIDE_SUMMARY_PRODUCTS_SERVICES')) && (\App\Module::isModuleActive('OutsourcedProducts') || \App\Module::isModuleActive('Products') || \App\Module::isModuleActive('Services') || \App\Module::isModuleActive('OSSOutsourcedServices'));
 		}
-		if ($moduleName == 'Accounts') {
-			$showPSTab = \includes\Modules::isModuleActive('OutsourcedProducts') || \includes\Modules::isModuleActive('Products') || \includes\Modules::isModuleActive('Services') || \includes\Modules::isModuleActive('OSSOutsourcedServices') || \includes\Modules::isModuleActive('Assets') || \includes\Modules::isModuleActive('OSSSoldServices');
+		if ($moduleName === 'Accounts') {
+			$showPSTab = (!AppConfig::module($moduleName, 'HIDE_SUMMARY_PRODUCTS_SERVICES')) && (\App\Module::isModuleActive('OutsourcedProducts') || \App\Module::isModuleActive('Products') || \App\Module::isModuleActive('Services') || \App\Module::isModuleActive('OSSOutsourcedServices') || \App\Module::isModuleActive('Assets') || \App\Module::isModuleActive('OSSSoldServices'));
 		}
 		if ('Contacts' != $moduleName && $showPSTab) {
 			$relatedLinks[] = array(
@@ -104,8 +104,8 @@ class Accounts_DetailView_Model extends Vtiger_DetailView_Model
 				'badgeClass' => 'bgDanger'
 			];
 		}
-		$openStreetMapModuleModel = Vtiger_Module_Model::getInstance('OpenStreetMap');
-		if($openStreetMapModuleModel->isActive()){
+		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
+		if ($userPrivilegesModel->hasModulePermission('OpenStreetMap')) {
 			$relatedLinks[] = [
 				'linktype' => 'DETAILVIEWTAB',
 				'linklabel' => 'LBL_MAP',
@@ -116,7 +116,6 @@ class Accounts_DetailView_Model extends Vtiger_DetailView_Model
 		$relationModels = $parentModuleModel->getRelations();
 
 		foreach ($relationModels as $relation) {
-			//TODO : Way to get limited information than getting all the information
 			$link = array(
 				'linktype' => 'DETAILVIEWRELATED',
 				'linklabel' => $relation->get('label'),

@@ -28,7 +28,7 @@ class Vtiger_ModulesHierarchy_Model
 		self::$modulesMapMMBase = $modulesMapMMBase;
 		self::$modulesMapMMCustom = $modulesMapMMCustom;
 		foreach (self::$modulesHierarchy as $module => &$details) {
-			if (\includes\Modules::isModuleActive($module) && Users_Privileges_Model::isPermitted($module)) {
+			if (\App\Module::isModuleActive($module) && Users_Privileges_Model::isPermitted($module)) {
 				self::$modulesByLevels[$details['level']][$module] = $details;
 			}
 		}
@@ -74,9 +74,11 @@ class Vtiger_ModulesHierarchy_Model
 	{
 		self::init();
 		$modules = [];
-		foreach (self::$modulesByLevels[$level] as $module => &$details) {
-			if (Users_Privileges_Model::isPermitted($module, $actionName)) {
-				$modules[$module] = $details;
+		if (isset(self::$modulesByLevels[$level])) {
+			foreach (self::$modulesByLevels[$level] as $module => &$details) {
+				if (Users_Privileges_Model::isPermitted($module, $actionName)) {
+					$modules[$module] = $details;
+				}
 			}
 		}
 		return $modules;
@@ -144,7 +146,7 @@ class Vtiger_ModulesHierarchy_Model
 			if (isset(self::$relatedField[$moduleName][1])) {
 				$fields = self::$relatedField[$moduleName][1];
 			} else {
-				$query = 'SELECT vtiger_field.tabid,vtiger_field.columnname,vtiger_field.fieldname,vtiger_field.tablename,vtiger_tab.name FROM vtiger_fieldmodulerel INNER JOIN vtiger_field ON vtiger_field.fieldid = vtiger_fieldmodulerel.fieldid INNER JOIN vtiger_tab ON vtiger_tab.tabid = vtiger_field.tabid WHERE vtiger_tab.presence = ? AND vtiger_fieldmodulerel.relmodule = ?';
+				$query = 'SELECT vtiger_field.tabid,vtiger_field.columnname,vtiger_field.fieldname,vtiger_field.tablename,vtiger_tab.name FROM vtiger_fieldmodulerel INNER JOIN vtiger_field ON vtiger_field.fieldid = vtiger_fieldmodulerel.fieldid INNER JOIN vtiger_tab ON vtiger_tab.tabid = vtiger_field.tabid WHERE vtiger_tab.presence = ? && vtiger_fieldmodulerel.relmodule = ?';
 				$result = $db->pquery($query, [0, $moduleName]);
 				while ($row = $db->getRow($result)) {
 					$fields[] = $row;
@@ -160,7 +162,7 @@ class Vtiger_ModulesHierarchy_Model
 INNER JOIN vtiger_tab ON vtiger_tab.tabid = vtiger_field.tabid
 INNER JOIN vtiger_ws_fieldtype ON vtiger_ws_fieldtype.uitype = vtiger_field.uitype
 INNER JOIN vtiger_ws_referencetype ON vtiger_ws_referencetype.fieldtypeid = vtiger_ws_fieldtype.fieldtypeid
-WHERE vtiger_tab.presence = ? AND vtiger_ws_referencetype.`type` = ?';
+WHERE vtiger_tab.presence = ? && vtiger_ws_referencetype.`type` = ?';
 				$result = $db->pquery($query, [0, $moduleName]);
 				$fields1 = [];
 				while ($row = $db->getRow($result)) {
@@ -175,7 +177,7 @@ WHERE vtiger_tab.presence = ? AND vtiger_ws_referencetype.`type` = ?';
 				$fields = array_merge($fields, self::$relatedField[$moduleName][3]);
 			} else {
 				$uitype = Vtiger_ModulesHierarchy_Model::getUitypeByModule($moduleName);
-				$result = $db->pquery('SELECT vtiger_field.tabid,vtiger_field.fieldname,vtiger_field.columnname,vtiger_field.tablename,vtiger_tab.name FROM vtiger_field INNER JOIN vtiger_tab ON vtiger_tab.tabid = vtiger_field.tabid WHERE vtiger_tab.presence = ? AND vtiger_field.uitype = ?', [0, $uitype]);
+				$result = $db->pquery('SELECT vtiger_field.tabid,vtiger_field.fieldname,vtiger_field.columnname,vtiger_field.tablename,vtiger_tab.name FROM vtiger_field INNER JOIN vtiger_tab ON vtiger_tab.tabid = vtiger_field.tabid WHERE vtiger_tab.presence = ? && vtiger_field.uitype = ?', [0, $uitype]);
 				$fields2 = [];
 				while ($row = $db->getRow($result)) {
 					$fields2[] = $row;
@@ -248,24 +250,9 @@ WHERE vtiger_tab.presence = ? AND vtiger_ws_referencetype.`type` = ?';
 
 	protected static function getRelatedRecordsByField($record, $field)
 	{
-		$currentUserModel = Users_Record_Model::getCurrentUserModel();
-		$db = PearDatabase::getInstance();
-		$queryGenerator = new QueryGenerator($field['name'], $currentUserModel);
+		$queryGenerator = new \App\QueryGenerator($field['name']);
 		$queryGenerator->setFields(['id']);
-		$queryGenerator->setCustomCondition([
-			'glue' => 'AND',
-			'tablename' => $field['tablename'],
-			'column' => $field['columnname'],
-			'operator' => '=',
-			'value' => $record
-		]);
-		$query = $queryGenerator->getQuery();
-		$result = $db->query($query);
-
-		$ids = [];
-		while (($id = $db->getSingleValue($result)) !== false) {
-			$ids[] = $id;
-		}
-		return $ids;
+		$queryGenerator->addNativeCondition([$field['tablename'] . '.' . $field['columnname'] => $record]);
+		return $queryGenerator->createQuery()->column();
 	}
 }

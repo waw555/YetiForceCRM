@@ -91,13 +91,10 @@ jQuery.Class("Calendar_CalendarView_Js", {
 
 		//Default time format
 		var userDefaultTimeFormat = app.getMainParams('time_format');
-		var popoverTimeFormat;
 		if (userDefaultTimeFormat == 24) {
 			userDefaultTimeFormat = 'H:mm';
-			popoverTimeFormat = 'HH:mm';
 		} else {
 			userDefaultTimeFormat = 'h:mmt';
-			popoverTimeFormat = 'hh:mm A';
 		}
 
 		//Default first day of the week
@@ -155,8 +152,8 @@ jQuery.Class("Calendar_CalendarView_Js", {
 					html: true,
 					placement: 'auto right',
 					template: '<div class="popover calendarPopover" role="tooltip"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>',
-					content: '<div><span class="glyphicon glyphicon-time" aria-hidden="true"></span> <label>' + app.vtranslate('JS_START_DATE') + '</label>: ' + event.start.format('YYYY-MM-DD ' + popoverTimeFormat) + '</div>' +
-							'<div><span class="glyphicon glyphicon-time" aria-hidden="true"></span> <label>' + app.vtranslate('JS_END_DATE') + '</label>: ' + event.end.format('YYYY-MM-DD ' + popoverTimeFormat) + '</div>' +
+					content: '<div><span class="glyphicon glyphicon-time" aria-hidden="true"></span> <label>' + app.vtranslate('JS_START_DATE') + '</label>: ' + event.start_display + '</div>' +
+							'<div><span class="glyphicon glyphicon-time" aria-hidden="true"></span> <label>' + app.vtranslate('JS_END_DATE') + '</label>: ' + event.end_display + '</div>' +
 							(event.lok ? '<div><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> <label>' + app.vtranslate('JS_LOCATION') + '</label>: ' + event.lok + '</div>' : '') +
 							(event.pri ? '<div><span class="glyphicon glyphicon-warning-sign" aria-hidden="true"></span> <label>' + app.vtranslate('JS_PRIORITY') + '</label>: ' + app.vtranslate('JS_' + event.pri) + '</div>' : '') +
 							'<div><span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> <label>' + app.vtranslate('JS_STATUS') + '</label>: ' + app.vtranslate('JS_' + event.sta) + '</div>' +
@@ -393,7 +390,7 @@ jQuery.Class("Calendar_CalendarView_Js", {
 			headerInstance.handleQuickCreateData(data, {callbackFunction: function (data) {
 					thisInstance.addCalendarEvent(data.result);
 				}});
-			jQuery('.modal-body').css({'max-height': '500px', 'overflow-y': 'auto'});
+			jQuery('.modal-body').css({'max-height': app.getScreenHeight(70) + 'px', 'overflow-y': 'auto'});
 		});
 	},
 	addCalendarEvent: function (calendarDetails) {
@@ -476,19 +473,19 @@ jQuery.Class("Calendar_CalendarView_Js", {
 	goToRecordsList: function (link) {
 		var thisInstance = this;
 		var types = thisInstance.getValuesFromSelect2($("#calendarActivityTypeList"), []);
-		var user = thisInstance.getValuesFromSelect2($("#calendarUserList"), [], true);
-		user = thisInstance.getValuesFromSelect2($("#calendarGroupList"), user, true);
+		var user = thisInstance.getValuesFromSelect2($("#calendarUserList"), [], false);
+		user = thisInstance.getValuesFromSelect2($("#calendarGroupList"), user, false);
 		var view = thisInstance.getCalendarView().fullCalendar('getView');
 		var start_date = view.start.format();
 		var end_date = view.end.format();
 		var status = app.getMainParams('activityStateLabels', true);
-		var searchParams = '["activitystatus","c","' + status[app.getMainParams('showType')].join() + '"]';
+		var searchParams = '["activitystatus","e","' + status[app.getMainParams('showType')].join() + '"]';
 		searchParams += ',["date_start","bw","' + start_date + ',' + end_date + '"]';
 		if (types.length) {
 			searchParams += ',["activitytype","e","' + types + '"]';
 		}
 		if (user.length) {
-			searchParams += ',["assigned_user_id","c","' + user + '"]';
+			searchParams += ',["assigned_user_id","e","' + user + '"]';
 		}
 		$(".calendarFilters .filterField").each(function () {
 			var type = $(this).attr('type');

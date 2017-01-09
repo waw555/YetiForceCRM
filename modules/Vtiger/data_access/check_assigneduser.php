@@ -12,7 +12,7 @@
 Class DataAccess_check_assigneduser
 {
 
-	var $config = true;
+	public $config = true;
 
 	public function process($ModuleName, $ID, $record_form, $config)
 	{
@@ -45,8 +45,8 @@ Class DataAccess_check_assigneduser
 
 	public function getConfig($id, $module, $baseModule)
 	{
-		$users = \includes\fields\Owner::getInstance()->getAccessibleUsers();
-		$groups = \includes\fields\Owner::getInstance()->getAccessibleGroups();
+		$users = \App\Fields\Owner::getInstance()->getAccessibleUsers();
+		$groups = \App\Fields\Owner::getInstance()->getAccessibleGroups();
 
 		return Array('users' => $users, 'groups' => $groups);
 	}

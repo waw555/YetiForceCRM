@@ -19,7 +19,7 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	{
 		$largerSizedWidgets = array('GroupedBySalesPerson', 'GroupedBySalesStage', 'Funnel Amount', 'LeadsByIndustry');
 		$title = $this->getName();
-		$size = \includes\utils\Json::decode(html_entity_decode($this->get('size')));
+		$size = \App\Json::decode(html_entity_decode($this->get('size')));
 		$width = $size['width'];
 		$this->set('width', $width);
 
@@ -32,7 +32,7 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	public function getHeight()
 	{
 		//Special case for History widget
-		$size = \includes\utils\Json::decode(html_entity_decode($this->get('size')));
+		$size = \App\Json::decode(html_entity_decode($this->get('size')));
 		$height = $size['height'];
 		$this->set('height', $height);
 
@@ -46,7 +46,7 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	{
 		$position = $this->get('position');
 		if ($position) {
-			$position = \includes\utils\Json::decode(decode_html($position));
+			$position = \App\Json::decode(decode_html($position));
 			return intval($position['col']);
 		}
 		return $default;
@@ -56,7 +56,7 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	{
 		$position = $this->get('position');
 		if ($position) {
-			$position = \includes\utils\Json::decode(decode_html($position));
+			$position = \App\Json::decode(decode_html($position));
 			return intval($position['row']);
 		}
 		return $default;
@@ -64,7 +64,7 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get the url of the widget
-	 * @return <String>
+	 * @return string
 	 */
 	public function getUrl()
 	{
@@ -91,8 +91,6 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	{
 		$widgetName = $this->get('name');
 		if (empty($widgetName)) {
-			//since the html entitites will be encoded
-			//TODO : See if you need to push decode_html to base model
 			$linkUrl = decode_html($this->getUrl());
 			preg_match('/name=[a-zA-Z]+/', $linkUrl, $matches);
 			$matches = explode('=', $matches[0]);
@@ -116,14 +114,12 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 
 	public static function getInstance($linkId, $userId)
 	{
-		$db = PearDatabase::getInstance();
-		$result = $db->pquery('SELECT * FROM vtiger_module_dashboard_widgets
-			INNER JOIN vtiger_links ON vtiger_links.linkid = vtiger_module_dashboard_widgets.linkid
-			WHERE linktype = ? AND vtiger_links.linkid = ? AND userid = ?', array('DASHBOARDWIDGET', $linkId, $userId));
-
+		$row = (new \App\Db\Query())->from('vtiger_module_dashboard_widgets')
+			->innerJoin('vtiger_links', 'vtiger_links.linkid = vtiger_module_dashboard_widgets.linkid')
+			->where(['linktype' => 'DASHBOARDWIDGET', 'vtiger_links.linkid' => $linkId, 'userid' => $userId])
+			->one();
 		$self = new self();
-		if ($db->num_rows($result)) {
-			$row = $db->query_result_rowdata($result, 0);
+		if ($row) {
 			$self->setData($row);
 		}
 		return $self;
@@ -133,39 +129,31 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	{
 		if (!$linkId && !$widgetId)
 			return;
-
-		$db = PearDatabase::getInstance();
-		$sql = 'UPDATE vtiger_module_dashboard_widgets SET position=? WHERE userid=?';
-		$params = array($position, $userId);
 		if ($linkId) {
-			$sql .= ' AND linkid = ?';
-			$params[] = $linkId;
+			$where = ['userid' => $userId, 'linkid' => $linkId];
 		} else if ($widgetId) {
-			$sql .= ' AND id = ?';
-			$params[] = $widgetId;
+			$where = ['userid' => $userId, 'id' => $widgetId];
 		}
-		$db->pquery($sql, $params);
+		\App\Db::getInstance()->createCommand()->update(('vtiger_module_dashboard_widgets'), ['position' => $position], $where)->execute();
 	}
 
 	public static function getInstanceWithWidgetId($widgetId, $userId)
 	{
-		$db = PearDatabase::getInstance();
-		$result = $db->pquery('SELECT * FROM vtiger_module_dashboard_widgets
-			INNER JOIN vtiger_links ON vtiger_links.linkid = vtiger_module_dashboard_widgets.linkid
-			WHERE linktype = ? AND vtiger_module_dashboard_widgets.id = ? AND userid = ?', array('DASHBOARDWIDGET', $widgetId, $userId));
-
+		$row = (new \App\Db\Query())->from('vtiger_module_dashboard_widgets')
+			->innerJoin('vtiger_links', 'vtiger_links.linkid = vtiger_module_dashboard_widgets.linkid')
+			->where(['linktype' => 'DASHBOARDWIDGET', 'vtiger_module_dashboard_widgets.id' => $widgetId, 'userid' => $userId])
+			->one();
 		$self = new self();
-		if ($db->num_rows($result)) {
-			$row = $db->query_result_rowdata($result, 0);
+		if ($row) {
 			if ($row['linklabel'] == 'Mini List') {
-				if(!$row['isdeafult'])
+				if (!$row['isdeafult'])
 					$row['deleteFromList'] = true;
 				$minilistWidget = Vtiger_Widget_Model::getInstanceFromValues($row);
 				$minilistWidgetModel = new Vtiger_MiniList_Model();
 				$minilistWidgetModel->setWidgetModel($minilistWidget);
 				$row['title'] = $minilistWidgetModel->getTitle();
 			} else if ($row['linklabel'] == 'ChartFilter') {
-				if(!$row['isdeafult'])
+				if (!$row['isdeafult'])
 					$row['deleteFromList'] = true;
 				$chartFilterWidget = Vtiger_Widget_Model::getInstanceFromValues($row);
 				$chartFilterWidgetModel = new Vtiger_ChartFilter_Model();
@@ -182,34 +170,34 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	 */
 	public function show()
 	{
-		$db = PearDatabase::getInstance();
 		if (0 == $this->get('active')) {
-			$query = 'UPDATE vtiger_module_dashboard_widgets SET `active` = ? WHERE id = ?';
-			$params = array(1, $this->get('widgetid'));
-			$db->pquery($query, $params);
+			App\Db::getInstance()->createCommand()
+				->update('vtiger_module_dashboard_widgets', ['active' => 1], ['id' => $this->get('widgetid')])
+				->execute();
 		}
 		$this->set('id', $this->get('widgetid'));
 	}
 
 	/**
 	 * Function to remove the widget from the Users Dashboard
+	 * @param string $action
 	 */
 	public function remove($action = 'hide')
 	{
-		$db = PearDatabase::getInstance();
-		if ($action == 'delete')
-			$db->pquery('DELETE FROM vtiger_module_dashboard_widgets WHERE id = ? AND blockid = ?', array($this->get('id'), $this->get('blockid')));
-		else if ($action == 'hide') {
-			$query = 'UPDATE vtiger_module_dashboard_widgets SET `active` = ? WHERE id = ?';
-			$params = array(0, $this->get('id'));
-			$db->pquery($query, $params);
+		$db = App\Db::getInstance();
+		if ($action == 'delete') {
+			$db->createCommand()->delete('vtiger_module_dashboard_widgets', ['id' => $this->get('id'), 'blockid' => $this->get('blockid')])
+				->execute();
+		} else if ($action == 'hide') {
+			$db->createCommand()->update('vtiger_module_dashboard_widgets', ['active' => 0], ['id' => $this->get('id')])
+				->execute();
 			$this->set('active', 0);
 		}
 	}
 
 	/**
 	 * Function returns URL that will remove a widget for a User
-	 * @return <String>
+	 * @return string
 	 */
 	public function getDeleteUrl()
 	{
@@ -237,12 +225,12 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 	 * @param vtlib\Link $widgetLink
 	 * @param Current Smarty Context $context
 	 */
-	function processWidget(Vtiger_Link_Model $widgetLink, Vtiger_Record_Model $recordModel)
+	public function processWidget(Vtiger_Link_Model $widgetLink, Vtiger_Record_Model $recordModel)
 	{
 		if (preg_match("/^block:\/\/(.*)/", $widgetLink->get('linkurl'), $matches)) {
 			list($widgetControllerClass, $widgetControllerClassFile) = explode(':', $matches[1]);
 			if (!class_exists($widgetControllerClass)) {
-				checkFileAccessForInclusion($widgetControllerClassFile);
+				\vtlib\Deprecated::checkFileAccessForInclusion($widgetControllerClassFile);
 				include_once $widgetControllerClassFile;
 			}
 			if (class_exists($widgetControllerClass)) {
@@ -254,14 +242,14 @@ class Vtiger_Widget_Model extends Vtiger_Base_Model
 			}
 		}
 	}
-	
+
 	public static function removeWidgetFromList($id)
 	{
 		$db = PearDatabase::getInstance();
 		$query = "SELECT templateid FROM vtiger_module_dashboard_widgets WHERE id = ?";
 		$result = $db->pquery($query, [$id]);
 		$templateId = $db->getSingleValue($result);
-		if($templateId)
+		if ($templateId)
 			$db->delete('vtiger_module_dashboard', 'id = ?', [$templateId]);
 		$db->delete('vtiger_module_dashboard_widgets', 'id = ?', [$id]);
 	}

@@ -12,7 +12,7 @@
 Class OSSMailView_preview_View extends Vtiger_Index_View
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		$moduleName = $request->getModule();
 		$recordId = $request->get('record');
@@ -24,7 +24,7 @@ Class OSSMailView_preview_View extends Vtiger_Index_View
 		return true;
 	}
 
-	public function preProcess(Vtiger_Request $request)
+	public function preProcess(Vtiger_Request $request, $display = true)
 	{
 		parent::preProcess($request, false);
 	}
@@ -44,10 +44,11 @@ Class OSSMailView_preview_View extends Vtiger_Index_View
 		$bcc = $recordModel->get('bcc_email');
 		$subject = $recordModel->get('subject');
 		$owner = $recordModel->get('assigned_user_id');
-		$sent = $recordModel->get('createdtime');
+		$sentTime = new DateTimeField($recordModel->get('createdtime'));
+		$sent = $sentTime->getDisplayDateTimeValue();
 
 		// pobierz załączniki
-		$userNameSql = getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
+		$userNameSql = \vtlib\Deprecated::getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 		$query = "SELECT case when (vtiger_users.user_name not like '') then $userNameSql else vtiger_groups.groupname end as user_name,
 				'Documents' ActivityType,vtiger_attachments.type  FileType,vtiger_crmentity.modifiedtime,
 				vtiger_seattachmentsrel.attachmentsid attachmentsid, vtiger_notes.notesid crmid, vtiger_notes.notecontent description,vtiger_notes.*
@@ -68,8 +69,7 @@ Class OSSMailView_preview_View extends Vtiger_Index_View
 		for ($i = 0; $i < $num; $i++) {
 			$attachments[$i]['name'] = $db->query_result($result, $i, 'title');
 			$attachments[$i]['file'] = $db->query_result($result, $i, 'filename');
-			$attachments[$i]['id'] = $db->query_result($result, $i, 'attachmentsid');
-			$attachments[$i]['docid'] = $db->query_result($result, $i, 'crmid');
+			$attachments[$i]['id'] = $db->query_result($result, $i, 'crmid');
 		}
 
 		$viewer = $this->getViewer($request);
@@ -87,6 +87,18 @@ Class OSSMailView_preview_View extends Vtiger_Index_View
 		$viewer->assign('RECORD', $record);
 		$viewer->assign('RECORD_MODEL', $recordModel);
 		$viewer->assign('ISMODAL', $request->isAjax());
+		$viewer->assign('SCRIPTS', $this->getModalScripts($request));
+		$viewer->assign('SMODULENAME', $request->get('smodule'));
+		$viewer->assign('SRECORD', $request->get('srecord'));
 		$viewer->view('preview.tpl', 'OSSMailView');
+	}
+
+	public function getModalScripts(Vtiger_Request $request)
+	{
+		$scripts = [
+			'~layouts/basic/modules/OSSMailView/resources/preview.js'
+		];
+		$modalScripts = $this->checkAndConvertJsScripts($scripts);
+		return $modalScripts;
 	}
 }

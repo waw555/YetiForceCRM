@@ -74,7 +74,7 @@ class SMSNotifier extends SMSNotifierBase
 	/**
 	 * Detect the related modules based on the entity relation information for this instance.
 	 */
-	function detectRelatedModules()
+	public function detectRelatedModules()
 	{
 
 		$adb = PearDatabase::getInstance();
@@ -83,7 +83,7 @@ class SMSNotifier extends SMSNotifierBase
 		// Pick the distinct modulenames based on related records.
 		$result = $adb->pquery("SELECT distinct setype FROM vtiger_crmentity WHERE crmid in (
 			SELECT relcrmid FROM vtiger_crmentityrel INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid=vtiger_crmentityrel.crmid
-			WHERE vtiger_crmentity.crmid = ? AND vtiger_crmentity.deleted=0)", array($this->id));
+			WHERE vtiger_crmentity.crmid = ? && vtiger_crmentity.deleted=0)", array($this->id));
 
 		$relatedModules = array();
 
@@ -92,7 +92,7 @@ class SMSNotifier extends SMSNotifierBase
 			require('user_privileges/user_privileges_' . $current_user->id . '.php');
 			while ($resultrow = $adb->fetch_array($result)) {
 				$accessCheck = false;
-				$relatedTabId = getTabid($resultrow['setype']);
+				$relatedTabId = \App\Module::getModuleId($resultrow['setype']);
 				if ($relatedTabId == 0) {
 					$accessCheck = true;
 				} else {
@@ -143,7 +143,7 @@ class SMSNotifier extends SMSNotifierBase
 		$tonumbers = array();
 
 		if (count($userIds) > 0) {
-			$phoneSqlQuery = "select phone_mobile, id from vtiger_users WHERE status='Active' AND id in(%s)";
+			$phoneSqlQuery = "select phone_mobile, id from vtiger_users WHERE status='Active' && id in(%s)";
 			$phoneSqlQuery = sprintf($phoneSqlQuery, generateQuestionMarks($userIds));
 			$phoneSqlResult = $adb->pquery($phoneSqlQuery, [$userIds]);
 			while ($phoneSqlResultRow = $adb->fetch_array($phoneSqlResult)) {
@@ -193,7 +193,7 @@ class SMSNotifier extends SMSNotifierBase
 	static function smsquery($record)
 	{
 		$adb = PearDatabase::getInstance();
-		$result = $adb->pquery("SELECT * FROM vtiger_smsnotifier_status WHERE smsnotifierid = ? AND needlookup = 1", array($record));
+		$result = $adb->pquery("SELECT * FROM vtiger_smsnotifier_status WHERE smsnotifierid = ? && needlookup = 1", array($record));
 		if ($result && $adb->num_rows($result)) {
 			$provider = SMSNotifierManager::getActiveProviderInstance();
 
@@ -222,7 +222,7 @@ class SMSNotifier extends SMSNotifierBase
 
 	static function fireSendSMS($message, $tonumbers)
 	{
-		$log = vglobal('log');
+		
 		$provider = SMSNotifierManager::getActiveProviderInstance();
 		if ($provider) {
 			return $provider->send($message, $tonumbers);
@@ -261,7 +261,7 @@ class SMSNotifierManager
 			$provider = SMSNotifier_Provider_Model::getInstance($resultrow['providertype']);
 			$parameters = array();
 			if (!empty($resultrow['parameters']))
-				$parameters = \includes\utils\Json::decode(decode_html($resultrow['parameters']));
+				$parameters = \App\Json::decode(decode_html($resultrow['parameters']));
 			foreach ($parameters as $k => $v) {
 				$provider->setParameter($k, $v);
 			}
@@ -298,10 +298,10 @@ class SMSNotifierManager
 	static function updateConfiguredServer($id, $frmvalues)
 	{
 		$adb = PearDatabase::getInstance();
-		$providertype = vtlib_purify($frmvalues['smsserver_provider']);
-		$username = vtlib_purify($frmvalues['smsserver_username']);
-		$password = vtlib_purify($frmvalues['smsserver_password']);
-		$isactive = vtlib_purify($frmvalues['smsserver_isactive']);
+		$providertype = App\Purifier::purify($frmvalues['smsserver_provider']);
+		$username = App\Purifier::purify($frmvalues['smsserver_username']);
+		$password = App\Purifier::purify($frmvalues['smsserver_password']);
+		$isactive = App\Purifier::purify($frmvalues['smsserver_isactive']);
 
 		$provider = SMSNotifier_Provider_Model::getInstance($providertype);
 
@@ -312,10 +312,10 @@ class SMSNotifierManager
 			foreach ($providerParameters as $k => $v) {
 				$lookupkey = "smsserverparam_{$providertype}_{$v}";
 				if (isset($frmvalues[$lookupkey])) {
-					$inputServerParams[$v] = vtlib_purify($frmvalues[$lookupkey]);
+					$inputServerParams[$v] = App\Purifier::purify($frmvalues[$lookupkey]);
 				}
 			}
-			$parameters = \includes\utils\Json::encode($inputServerParams);
+			$parameters = \App\Json::encode($inputServerParams);
 		}
 
 		if (empty($id)) {

@@ -12,7 +12,7 @@
 class Settings_OSSDocumentControl_SaveTpl_Action extends Settings_Vtiger_Index_Action
 {
 
-	function checkPermission(Vtiger_Request $request)
+	public function checkPermission(Vtiger_Request $request)
 	{
 		return;
 	}
@@ -25,36 +25,39 @@ class Settings_OSSDocumentControl_SaveTpl_Action extends Settings_Vtiger_Index_A
 		$docName = $request->get('doc_name');
 		$docRequest = $request->get('doc_request');
 		$docOrder = $request->get('doc_order');
-
 		$conditionAll = $request->getRaw('condition_all_json');
 		$conditionOption = $request->getRaw('condition_option_json');
-
-		$db = PearDatabase::getInstance();
-
-		$insertBaseRecord = "INSERT INTO vtiger_ossdocumentcontrol VALUES(?, ?, ?, ?, ?, ?, ?)";
-		$db->pquery($insertBaseRecord, array(NULL, $baseModule, $summary, $docFolder, $docName, $docRequest, $docOrder), true);
-		$recordId = $db->getLastInsertID();
+		$db = App\Db::getInstance();
+		$db->createCommand()->insert('vtiger_ossdocumentcontrol', [
+			'module_name' => $baseModule,
+			'summary' => $summary,
+			'doc_folder' => $docFolder,
+			'doc_name' => $docName,
+			'doc_request' => $docRequest ? 1 : 0,
+			'doc_order' => $docOrder
+		])->execute();
+		$recordId = $db->getLastInsertID('vtiger_ossdocumentcontrol_ossdocumentcontrolid_seq');
 
 		$this->addConditions($conditionAll, $recordId);
-		$this->addConditions($conditionOption, $recordId, FALSE);
+		$this->addConditions($conditionOption, $recordId, false);
 
 		header("Location: index.php?module=OSSDocumentControl&parent=Settings&view=Index");
 	}
 
-	function addConditions($conditions, $relId, $mendatory = TRUE)
+	public function addConditions($conditions, $relId, $mendatory = true)
 	{
-		$db = PearDatabase::getInstance();
-
+		$db = App\Db::getInstance();
 		$conditionObj = json_decode($conditions);
-
 		if (count($conditionObj)) {
-			foreach ($conditionObj as $key => $obj) {
-				$insertConditionSql = "INSERT INTO vtiger_ossdocumentcontrol_cnd VALUES(?, ?, ?, ?, ?, ?, ?)";
-				if (is_array($obj->val)) {
-					$db->pquery($insertConditionSql, array(NULL, $relId, $obj->field, $obj->name, implode('::', $obj->val), $mendatory, $obj->type), TRUE);
-				} else {
-					$db->pquery($insertConditionSql, array(NULL, $relId, $obj->field, $obj->name, $obj->val, $mendatory, $obj->type), TRUE);
-				}
+			foreach ($conditionObj as $obj) {
+				$db->createCommand()->insert('vtiger_ossdocumentcontrol_cnd', [
+					'ossdocumentcontrolid' => $relId,
+					'fieldname' => $obj->field,
+					'comparator' => $obj->name,
+					'val' => is_array($obj->val) ? implode('::', $obj->val) : $obj->val,
+					'required' => $mendatory,
+					'field_type' => $obj->type
+				])->execute();
 			}
 		}
 	}

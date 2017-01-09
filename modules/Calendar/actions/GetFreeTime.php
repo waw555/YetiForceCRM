@@ -6,19 +6,21 @@
  * @license licenses/License.html
  * @author Tomasz Kur <t.kur@yetiforce.com>
  */
-class Calendar_GetFreeTime_Action extends Vtiger_BasicAjax_Action {
+class Calendar_GetFreeTime_Action extends Vtiger_BasicAjax_Action
+{
 
-	public function checkPermission(Vtiger_Request $request) {
+	public function checkPermission(Vtiger_Request $request)
+	{
 		$moduleName = $request->getModule();
-		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$permission = $userPrivilegesModel->hasModulePermission($moduleModel->getId());
+		$permission = $userPrivilegesModel->hasModulePermission($moduleName);
 		if (!$permission) {
 			throw new \Exception\NoPermitted('LBL_PERMISSION_DENIED');
 		}
 	}
 
-	public function getFreeTimeInDay($day) {
+	public function getFreeTimeInDay($day)
+	{
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 		$durationEvent = $currentUser->get('othereventduration');
 		$startWorkHour = $currentUser->get('start_hour');
@@ -31,7 +33,7 @@ class Calendar_GetFreeTime_Action extends Vtiger_BasicAjax_Action {
 		$dbStartDate = $dbStartDateOject->format('Y-m-d');
 		$dbEndDate = $dbEndDateObject->format('Y-m-d');
 
-		$db = PearDatabase::getInstance();
+		$db = App\Db::getInstance();
 		$params[] = 0;
 		$params[] = $currentUser->getId();
 		$params[] = $dbStartDateTime;
@@ -41,11 +43,29 @@ class Calendar_GetFreeTime_Action extends Vtiger_BasicAjax_Action {
 		$params[] = $dbStartDate;
 		$params[] = $dbEndDate;
 		$startTime = $dbStartDateOject->format('H:i:s');
-		$result = $db->pquery('SELECT date_start, time_start, time_end FROM vtiger_activity 
-				WHERE deleted = ? AND smownerid=? '
-				. "AND ( (concat(date_start, ' ', time_start)  >= ? AND concat(date_start, ' ', time_start) <= ?) OR (concat(due_date, ' ', time_end)  >= ? AND concat(due_date, ' ', time_end) <= ?) OR (date_start < ? AND due_date > ?) ) "
-				. 'ORDER BY time_start ASC', $params);
-		while ($row = $db->getRow($result)) {
+		$dataReader = (new \App\Db\Query())->select(['date_start', 'time_start', 'time_end'])
+				->from('vtiger_activity')
+				->where([
+					'and',
+					['deleted' => 0],
+					['smownerid' => $currentUser->getId()],
+					['or',
+						['and',
+							['>=', new \yii\db\Expression('CONCAT(date_start, ' . $db->quoteValue(' ') . ', time_start)'), $dbStartDateTime],
+							['<=', new \yii\db\Expression('CONCAT(date_start, ' . $db->quoteValue(' ') . ', time_start)'), $dbEndDateTime],
+						],
+						['and',
+							['>=', new \yii\db\Expression('CONCAT(due_date, ' . $db->quoteValue(' ') . ', time_end)'), $dbStartDateTime],
+							['<=', new \yii\db\Expression('CONCAT(due_date, ' . $db->quoteValue(' ') . ', time_end)'), $dbEndDateTime],
+						],
+						['and',
+							['<', 'date_start', $dbStartDate],
+							['>', 'due_date', $dbEndDate],
+						],
+					]
+				])->orderBy(['time_start' => SORT_ASC])
+				->createCommand()->query();
+		while ($row = $dataReader->read()) {
 			if (vtlib\Functions::getDateTimeMinutesDiff($startTime, $row['time_start']) >= $durationEvent) {
 				$date = new DateTime($row['date_start'] . ' ' . $startTime);
 				$startTime = new DateTimeField($startTime);
@@ -73,7 +93,8 @@ class Calendar_GetFreeTime_Action extends Vtiger_BasicAjax_Action {
 		}
 	}
 
-	public function process(Vtiger_Request $request) {
+	public function process(Vtiger_Request $request)
+	{
 		$dateStart = $request->get('dateStart');
 		$dateStart = DateTimeField::convertToDBFormat($dateStart);
 		$currentUser = Users_Record_Model::getCurrentUserModel();

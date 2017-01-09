@@ -12,26 +12,26 @@
 class OSSTimeControl_RightPanel_View extends Vtiger_IndexAjax_View
 {
 
-	function __construct()
+	public function __construct()
 	{
 		parent::__construct();
 		$this->exposeMethod('getUsersList');
 		$this->exposeMethod('getTypesList');
 	}
 
-	function getUsersList(Vtiger_Request $request)
+	public function getUsersList(Vtiger_Request $request)
 	{
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 		$viewer->assign('MODULE', $moduleName);
-		$viewer->assign('ALL_ACTIVEUSER_LIST', \includes\fields\Owner::getInstance(false, $currentUser)->getAccessibleUsers());
-		$viewer->assign('ALL_ACTIVEGROUP_LIST', \includes\fields\Owner::getInstance(false, $currentUser)->getAccessibleGroups());
+		$viewer->assign('ALL_ACTIVEUSER_LIST', \App\Fields\Owner::getInstance(false, $currentUser)->getAccessibleUsers());
+		$viewer->assign('ALL_ACTIVEGROUP_LIST', \App\Fields\Owner::getInstance(false, $currentUser)->getAccessibleGroups());
 		$viewer->assign('USER_MODEL', $currentUser);
 		$viewer->view('RightPanel.tpl', $moduleName);
 	}
 
-	function getTypesList(Vtiger_Request $request)
+	public function getTypesList(Vtiger_Request $request)
 	{
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();

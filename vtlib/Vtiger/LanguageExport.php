@@ -22,7 +22,7 @@ class LanguageExport extends Package
 	 * Generate unique id for insertion
 	 * @access private
 	 */
-	static function __getUniqueId()
+	public static function __getUniqueId()
 	{
 		$adb = \PearDatabase::getInstance();
 		return $adb->getUniqueID(self::TABLENAME);
@@ -32,7 +32,7 @@ class LanguageExport extends Package
 	 * Initialize Export
 	 * @access private
 	 */
-	function __initExport($languageCode)
+	public function __initExport($languageCode, $moduleInstance = null)
 	{
 		// Security check to ensure file is withing the web folder.
 		Utils::checkFileAccessForInclusion("languages/$languageCode/Vtiger.php");
@@ -48,7 +48,7 @@ class LanguageExport extends Package
 	 * @param String Zipfilename to use
 	 * @param Boolean True for sending the output as download
 	 */
-	function export($languageCode, $todir = '', $zipfilename = '', $directDownload = false)
+	public function export($languageCode, $todir = '', $zipfilename = '', $directDownload = false)
 	{
 
 		$this->__initExport($languageCode);
@@ -88,7 +88,7 @@ class LanguageExport extends Package
 	 * Export Language Handler
 	 * @access private
 	 */
-	function export_Language($prefix)
+	public function export_Language($prefix)
 	{
 		$db = \PearDatabase::getInstance();
 		$sqlresult = $db->pquery('SELECT * FROM vtiger_language WHERE prefix = ?', array($prefix));
@@ -114,14 +114,13 @@ class LanguageExport extends Package
 	 * Export vtiger dependencies
 	 * @access private
 	 */
-	function export_Dependencies($moduleInstance)
+	public function export_Dependencies($moduleInstance)
 	{
-		$vtigerMinVersion = \AppConfig::main('YetiForce_current_version');
-		$vtigerMaxVersion = current(explode('.', $vtigerMinVersion)) . '.*';
+		$minVersion = current(explode('.', \App\Version::get())) . '.*';
 		$this->openNode('dependencies');
 		$this->outputNode($vtigerMinVersion, 'vtiger_version');
-		if ($vtigerMaxVersion !== false)
-			$this->outputNode($vtigerMaxVersion, 'vtiger_max_version');
+		if ($minVersion !== false)
+			$this->outputNode($minVersion, 'vtiger_max_version');
 		$this->closeNode('dependencies');
 	}
 
@@ -129,7 +128,7 @@ class LanguageExport extends Package
 	 * Initialize Language Schema
 	 * @access private
 	 */
-	static function __initSchema()
+	public static function __initSchema()
 	{
 		$hastable = Utils::CheckTable(self::TABLENAME);
 		if (!$hastable) {
@@ -148,13 +147,13 @@ class LanguageExport extends Package
 	/**
 	 * Register language pack information.
 	 */
-	static function register($prefix, $label, $name = '', $isdefault = false, $isactive = true, $overrideCore = false)
+	public static function register($prefix, $label, $name = '', $isdefault = false, $isactive = true, $overrideCore = false)
 	{
 		self::__initSchema();
 
 		$prefix = trim($prefix);
 		// We will not allow registering core language unless forced
-		if (strtolower($prefix) == 'en_us' && $overrideCore == false)
+		if (strtolower($prefix) == 'en_us' && $overrideCore === false)
 			return;
 
 		$useisdefault = ($isdefault) ? 1 : 0;
@@ -191,7 +190,7 @@ class LanguageExport extends Package
 	 * De-Register language pack information
 	 * @param String Language prefix like (de_de) etc
 	 */
-	static function deregister($prefix)
+	public static function deregister($prefix)
 	{
 		$prefix = trim($prefix);
 		// We will not allow deregistering core language
@@ -209,32 +208,18 @@ class LanguageExport extends Package
 	 * Get all the language information
 	 * @param Boolean true to include in-active languages also, false (default)
 	 */
-	static function getAll($includeInActive = false)
+	public static function getAll($includeInActive = false)
 	{
-		$adb = \PearDatabase::getInstance();
-		$hastable = Utils::CheckTable(self::TABLENAME);
-
-		$languageinfo = [];
-
-		if ($hastable) {
-			if ($includeInActive)
-				$result = $adb->pquery(sprintf('SELECT * FROM %s', self::TABLENAME), []);
-			else
-				$result = $adb->pquery(sprintf('SELECT * FROM %s WHERE active = ?', self::TABLENAME), [1]);
-
-			for ($index = 0; $index < $adb->num_rows($result); ++$index) {
-				$resultrow = $adb->fetch_array($result);
-				$prefix = $resultrow['prefix'];
-				$label = $resultrow['label'];
-				$languageinfo[$prefix] = $label;
-			}
-		} else {
-			$languages = vglobal('languages');
-			foreach ($languages as $prefix => $label) {
-				$languageinfo[$prefix] = $label;
-			}
+		$query = (new \App\Db\Query())->from(self::TABLENAME)->select('prefix,label');
+		if (!$includeInActive) {
+			$query->where(['active' => 1]);
 		}
-
-		return $languageinfo;
+		$languages = [];
+		$dataReader = $query->createCommand()->query();
+		while ($row = $dataReader->read()) {
+			$languages[$row['prefix']] = $row['label'];
+		}
+		asort($languages);
+		return $languages;
 	}
 }

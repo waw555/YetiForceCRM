@@ -9,6 +9,11 @@
 class OSSMailScanner_CreatedEmail_ScannerAction
 {
 
+	/**
+	 * Process
+	 * @param OSSMail_Mail_Model $mail
+	 * @return int
+	 */
 	public function process(OSSMail_Mail_Model $mail)
 	{
 		$id = 0;
@@ -27,7 +32,7 @@ class OSSMailScanner_CreatedEmail_ScannerAction
 		if (!empty($exceptionsAll['crating_mails'])) {
 			$exceptions = explode(',', $exceptionsAll['crating_mails']);
 			foreach ($exceptions as $exception) {
-				if (strpos($mailForExceptions, $exception) !== FALSE) {
+				if (strpos($mailForExceptions, $exception) !== false) {
 					return $id;
 				}
 			}
@@ -55,31 +60,31 @@ class OSSMailScanner_CreatedEmail_ScannerAction
 			$record->set('ossmailview_sendtype', $mail->getTypeEmail(true));
 			$record->set('mbox', $mail->getFolder());
 			$record->set('type', $type);
+			$record->set('mid', $mail->get('id'));
 			$record->set('rc_user', $account['user_id']);
 			$record->set('from_id', implode(',', array_unique($fromIds)));
 			$record->set('to_id', implode(',', array_unique($toIds)));
 			if (count($mail->get('attachments')) > 0) {
 				$record->set('attachments_exist', 1);
 			}
-			$record->set('mode', 'new');
-			$record->set('id', '');
+			$record->setHandlerExceptions(['disableHandlers' => true]);
 			$record->save();
+			$record->setHandlerExceptions([]);
 			$id = $record->getId();
 
 			$mail->setMailCrmId($id);
-			OSSMail_Record_Model::_SaveAttachements($id, $mail);
-			$db = PearDatabase::getInstance();
-			$db->update('vtiger_crmentity', [
+			OSSMail_Record_Model::_SaveAttachments($id, $mail);
+			$db = App\Db::getInstance();
+			$db->createCommand()->update('vtiger_crmentity', [
 				'createdtime' => $mail->get('udate_formated'),
 				'smcreatorid' => $mail->getAccountOwner(),
 				'modifiedby' => $mail->getAccountOwner()
-				], 'crmid = ?', [$id]
-			);
-			$db->update('vtiger_ossmailview', [
-				'date' => $mail->get('udate_formated'),
-				'id' => $mail->get('id')
-				], 'ossmailviewid = ?', [$id]
-			);
+				], ['crmid' => $id]
+			)->execute();
+			$db->createCommand()->update('vtiger_ossmailview', [
+				'date' => $mail->get('udate_formated')
+				], ['ossmailviewid' => $id]
+			)->execute();
 		}
 		return $id;
 	}

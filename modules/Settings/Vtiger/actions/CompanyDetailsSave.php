@@ -22,12 +22,12 @@ class Settings_Vtiger_CompanyDetailsSave_Action extends Settings_Vtiger_Basic_Ac
 				$saveLogo[$image] = $status = true;
 				if (!empty($_FILES[$image]['name'])) {
 					$logoDetails[$image] = $_FILES[$image];
-					$fileInstance = \includes\fields\File::loadFromRequest($logoDetails[$image]);
-					if (!$fileInstance->validate()) {
+					$fileInstance = \App\Fields\File::loadFromRequest($logoDetails[$image]);
+					if (!$fileInstance->validate('image')) {
 						$saveLogo[$image] = false;
 					}
 					//mime type check
-					if ($fileInstance->getShortMimeType(0) != 'image' || !in_array($fileInstance->getShortMimeType(1), Settings_Vtiger_CompanyDetails_Model::$logoSupportedFormats)) {
+					if ($fileInstance->getShortMimeType(0) !== 'image' || !in_array($fileInstance->getShortMimeType(1), Settings_Vtiger_CompanyDetails_Model::$logoSupportedFormats)) {
 						$saveLogo[$image] = false;
 					}
 					if ($saveLogo[$image]) {
@@ -42,14 +42,14 @@ class Settings_Vtiger_CompanyDetailsSave_Action extends Settings_Vtiger_Basic_Ac
 				$fieldValue = $request->get($fieldName);
 				if ($fieldName === 'logoname') {
 					if (!empty($logoDetails['logo']['name'])) {
-						$fieldValue = ltrim(basename(" " . $logoDetails['logo']['name']));
+						$fieldValue = ltrim(basename(" " . \App\Fields\File::sanitizeUploadFileName($logoDetails['logo']['name'])));
 					} else {
 						$fieldValue = $moduleModel->get($fieldName);
 					}
 				}
 				if ($fieldName === 'panellogoname') {
 					if (!empty($logoDetails['panellogo']['name'])) {
-						$fieldValue = ltrim(basename(" " . $logoDetails['panellogo']['name']));
+						$fieldValue = ltrim(basename(" " . \App\Fields\File::sanitizeUploadFileName($logoDetails['panellogo']['name'])));
 					} else {
 						$fieldValue = $moduleModel->get($fieldName);
 					}

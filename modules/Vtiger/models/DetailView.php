@@ -19,7 +19,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get Module instance
-	 * @return <Vtiger_Module_Model>
+	 * @return Vtiger_Module_Model
 	 */
 	public function getModule()
 	{
@@ -28,7 +28,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to set the module instance
-	 * @param <Vtiger_Module_Model> $moduleInstance - module model
+	 * @param Vtiger_Module_Model $moduleInstance - module model
 	 * @return Vtiger_DetailView_Model>
 	 */
 	public function setModule($moduleInstance)
@@ -65,6 +65,9 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 	 */
 	public function getDetailViewLinks($linkParams)
 	{
+		if ($this->has('Links')) {
+			return $this->get('Links');
+		}
 		$moduleModel = $this->getModule();
 		$recordModel = $this->getRecord();
 		$moduleName = $moduleModel->getName();
@@ -73,8 +76,8 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 		if ($moduleModel->isPermitted('WorkflowTrigger')) {
 			$adb = PearDatabase::getInstance();
-			vimport('~~modules/com_vtiger_workflow/include.inc');
-			vimport('~~modules/com_vtiger_workflow/VTEntityMethodManager.inc');
+			vimport('~~modules/com_vtiger_workflow/include.php');
+			vimport('~~modules/com_vtiger_workflow/VTEntityMethodManager.php');
 			$wfs = new VTWorkflowManager($adb);
 			$workflows = $wfs->getWorkflowsForModule($moduleName, VTWorkflowManager::$TRIGGER);
 			if (count($workflows) > 0) {
@@ -119,8 +122,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 			];
 		}
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$homeModel = Vtiger_Module_Model::getInstance('Dashboard');
-		if ($userPrivilegesModel->hasModulePermission($homeModel->getId()) && $userPrivilegesModel->hasModuleActionPermission($homeModel->getId(), 'NotificationCreateMessage')) {
+		if ($userPrivilegesModel->hasModulePermission('Notification') && $userPrivilegesModel->hasModuleActionPermission('Notification', 'NotificationCreateMessage')) {
 			$detailViewLinks[] = [
 				'linktype' => 'DETAILVIEWBASIC',
 				'linklabel' => '',
@@ -132,7 +134,22 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 		foreach ($detailViewLinks as $detailViewLink) {
 			$linkModelList['DETAILVIEWBASIC'][] = Vtiger_Link_Model::getInstanceFromValues($detailViewLink);
 		}
-
+		$fieldToupdate = AppConfig::module($moduleName, 'FIELD_TO_UPDATE_BY_BUTTON');
+		if ($recordModel->isEditable() && !empty($fieldToupdate)) {
+			foreach ($fieldToupdate as $fieldLabel => $fieldName) {
+				if (App\Field::getFieldPermission($moduleName, $fieldName)) {
+					$editViewLinks = [
+						'linktype' => 'DETAILVIEW',
+						'linklabel' => '',
+						'linkurl' => 'javascript:Vtiger_Detail_Js.updateField(\'' . $fieldName . '\')',
+						'linkicon' => 'glyphicon glyphicon-time',
+						'linkhint' => App\Language::translate('LBL_UPDATE_FIELD', $moduleName) . ' ' . App\Language::translate($fieldLabel, $moduleName),
+						'linkclass' => 'btn-warning',
+					];
+					$linkModelList['DETAILVIEW'][] = Vtiger_Link_Model::getInstanceFromValues($editViewLinks);
+				}
+			}
+		}
 		if ($recordModel->isEditable()) {
 			$editViewLinks = array(
 				'linktype' => 'DETAILVIEW',
@@ -178,7 +195,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 			);
 			$linkModelList['DETAILVIEW'][] = Vtiger_Link_Model::getInstanceFromValues($duplicateLinkModel);
 		}
-		if ($moduleModel->isPermitted('ExportPdf')) {
+		if (!Settings_ModuleManager_Library_Model::checkLibrary('mPDF') && $moduleModel->isPermitted('ExportPdf')) {
 			$handlerClass = Vtiger_Loader::getComponentClassName('Model', 'PDF', $moduleName);
 			$pdfModel = new $handlerClass();
 			if ($pdfModel->checkActiveTemplates($recordId, $moduleName, 'Detail')) {
@@ -194,19 +211,20 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 		}
 
 		$relatedLinks = $this->getDetailViewRelatedLinks();
-		foreach ($relatedLinks as $relatedLinkEntry) {
+		foreach ($relatedLinks as &$relatedLinkEntry) {
 			$relatedLink = Vtiger_Link_Model::getInstanceFromValues($relatedLinkEntry);
 			$linkModelList[$relatedLink->getType()][] = $relatedLink;
 		}
 
 		$allLinks = Vtiger_Link_Model::getAllByType($moduleModel->getId(), ['DETAILVIEWBASIC', 'DETAILVIEW', 'DETAIL_VIEW_HEADER_WIDGET', 'DETAILVIEWTAB'], $linkParams);
 		if (!empty($allLinks)) {
-			foreach ($allLinks as $type => $allLinksByType) {
-				foreach ($allLinksByType as $linkModel) {
+			foreach ($allLinks as $type => &$allLinksByType) {
+				foreach ($allLinksByType as &$linkModel) {
 					$linkModelList[$type][] = $linkModel;
 				}
 			}
 		}
+		$this->set('Links', $linkModelList);
 		return $linkModelList;
 	}
 
@@ -269,7 +287,6 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 		$relationModels = $parentModuleModel->getRelations();
 
 		foreach ($relationModels as $relation) {
-			//TODO : Way to get limited information than getting all the information
 			$link = array(
 				'linktype' => 'DETAILVIEWRELATED',
 				'linklabel' => $relation->get('label'),
@@ -292,16 +309,16 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 		if (count($this->widgetsList) > 0)
 			return;
 		$moduleModel = $this->getModule();
-		$Module = $this->getModuleName();
-		$Record = $this->getRecord()->getId();
-		$ModelWidgets = $moduleModel->getWidgets($Module, $Record);
+		$module = $this->getModuleName();
+		$record = $this->getRecord()->getId();
+		$modelWidgets = $moduleModel->getWidgets($module);
 		$userPrivilegesModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		foreach ($ModelWidgets as $widgetCol) {
+		foreach ($modelWidgets as $widgetCol) {
 			foreach ($widgetCol as $widget) {
 				$widgetName = 'Vtiger_' . $widget['type'] . '_Widget';
 				if (class_exists($widgetName)) {
 					$this->widgetsList[] = $widget['type'];
-					$widgetInstance = new $widgetName($Module, $moduleModel, $Record, $widget);
+					$widgetInstance = new $widgetName($module, $moduleModel, $record, $widget);
 					$widgetObject = $widgetInstance->getWidget();
 					if (count($widgetObject) > 0) {
 						$this->widgets[$widgetObject['wcol']][] = $widgetObject;
@@ -345,7 +362,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get the module label
-	 * @return <String> - label
+	 * @return string - label
 	 */
 	public function getModuleLabel()
 	{
@@ -354,7 +371,7 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 	/**
 	 *  Function to get the module name
-	 *  @return <String> - name of the module
+	 *  @return string - name of the module
 	 */
 	public function getModuleName()
 	{
@@ -363,8 +380,8 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get the instance
-	 * @param <String> $moduleName - module name
-	 * @param <String> $recordId - record id
+	 * @param string $moduleName - module name
+	 * @param string $recordId - record id
 	 * @return <Vtiger_DetailView_Model>
 	 */
 	public static function getInstance($moduleName, $recordId)
@@ -374,7 +391,6 @@ class Vtiger_DetailView_Model extends Vtiger_Base_Model
 
 		$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
 		$recordModel = Vtiger_Record_Model::getInstanceById($recordId, $moduleName);
-		//$recordModel->trackView();
 		return $instance->setModule($moduleModel)->setRecord($recordModel);
 	}
 

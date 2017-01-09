@@ -11,11 +11,11 @@
 class Settings_Webforms_Module_Model extends Settings_Vtiger_Module_Model
 {
 
-	var $baseTable = 'vtiger_webforms';
-	var $baseIndex = 'id';
-	var $nameFields = array('name');
-	var $listFields = array('name' => 'WebForm Name', 'targetmodule' => 'Module', 'publicid' => 'Public Id', 'returnurl' => 'Return Url', 'enabled' => 'Status');
-	var $name = 'Webforms';
+	public $baseTable = 'vtiger_webforms';
+	public $baseIndex = 'id';
+	public $nameFields = array('name');
+	public $listFields = array('name' => 'WebForm Name', 'targetmodule' => 'Module', 'publicid' => 'Public Id', 'returnurl' => 'Return Url', 'enabled' => 'Status');
+	public $name = 'Webforms';
 
 	public static function getSupportedModulesList()
 	{
@@ -33,7 +33,7 @@ class Settings_Webforms_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get Create view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getCreateRecordUrl()
 	{
@@ -42,7 +42,7 @@ class Settings_Webforms_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get List view url
-	 * @return <String> Url
+	 * @return string Url
 	 */
 	public function getListViewUrl()
 	{
@@ -80,7 +80,7 @@ class Settings_Webforms_Module_Model extends Settings_Vtiger_Module_Model
 
 	/**
 	 * Function to get field using field name
-	 * @param <String> $fieldName
+	 * @param string $fieldName
 	 * @return <Settings_Webforms_Field_Model>
 	 */
 	public function getField($fieldName)
@@ -103,7 +103,7 @@ class Settings_Webforms_Module_Model extends Settings_Vtiger_Module_Model
 		$db->pquery("DELETE from vtiger_webforms WHERE id = ?", array($recordId));
 		return true;
 	}
-	
+
 	public function getFieldsByDisplayType($type)
 	{
 		$fields = $this->getFields();

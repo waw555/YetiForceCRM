@@ -6,18 +6,16 @@
  * The Initial Developer of the Original Code is vtiger.
  * Portions created by vtiger are Copyright (C) vtiger.
  * All Rights Reserved.
+ * Contributor(s): YetiForce.com
  * *********************************************************************************** */
-require_once('libraries/magpierss/rss_fetch.inc');
 
 class Rss_Save_Action extends Vtiger_Save_Action
 {
 
 	public function checkPermission(Vtiger_Request $request)
 	{
-		$moduleName = $request->getModule();
 		$currentUserModel = Users_Privileges_Model::getCurrentUserPrivilegesModel();
-		$moduleId = vtlib\Functions::getModuleId($moduleName);
-		if (!$currentUserModel->hasModulePermission($moduleId)) {
+		if (!$currentUserModel->hasModulePermission($request->getModule())) {
 			throw new \Exception\NoPermittedToRecord('LBL_PERMISSION_DENIED');
 		}
 	}
@@ -30,10 +28,10 @@ class Rss_Save_Action extends Vtiger_Save_Action
 		$recordModel = Rss_Record_Model::getCleanInstance($moduleName);
 		$result = $recordModel->validateRssUrl($url);
 		if ($result) {
-			$recordModel->save($url);
-			$response->setResult(array('success' => true, 'message' => vtranslate('JS_RSS_SUCCESSFULLY_SAVED', $moduleName), 'id' => $recordModel->getId()));
+			$recordModel->saveRecord($url);
+			$response->setResult(['success' => true, 'message' => vtranslate('JS_RSS_SUCCESSFULLY_SAVED', $moduleName), 'id' => $recordModel->getId()]);
 		} else {
-			$response->setResult(array('success' => false, 'message' => vtranslate('JS_INVALID_RSS_URL', $moduleName)));
+			$response->setResult(['success' => false, 'message' => vtranslate('JS_INVALID_RSS_URL', $moduleName)]);
 		}
 
 		$response->emit();

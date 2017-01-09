@@ -38,13 +38,12 @@ class Documents_DetailView_Model extends Vtiger_DetailView_Model
 			'linktype' => 'DETAILVIEW',
 			'linklabel' => 'LBL_CHECK_FILE_INTEGRITY',
 			'linkurl' => $recordModel->checkFileIntegrityURL(),
-			'linkicon' => ' glyphicon glyphicon-file'
+			'linkicon' => 'glyphicon glyphicon-saved'
 		);
 		$linkModelList['DETAILVIEW'][] = Vtiger_Link_Model::getInstanceFromValues($basicActionLink);
 
 		if ($recordModel->get('filestatus') && $recordModel->get('filename') && $recordModel->get('filelocationtype') === 'I') {
-			$emailModuleModel = Vtiger_Module_Model::getInstance('OSSMail');
-			if ($currentUserModel->hasModulePermission($emailModuleModel->getId()) && AppConfig::main('isActiveSendingMails')) {
+			if ($currentUserModel->hasModulePermission('OSSMail') && AppConfig::main('isActiveSendingMails')) {
 				$basicActionLink = array(
 					'linktype' => 'DETAILVIEW',
 					'linklabel' => vtranslate('LBL_EMAIL_FILE_AS_ATTACHMENT', 'Documents'),
@@ -77,7 +76,7 @@ class Documents_DetailView_Model extends Vtiger_DetailView_Model
 			'linkKey' => 'LBL_RECORD_SUMMARY',
 			'linkurl' => $recordModel->getDetailViewUrl() . '&mode=showDocumentRelations',
 			'linkicon' => '',
-			'related' => \includes\utils\Json::encode(Documents_Record_Model::getReferenceModuleByDocId($recordModel->getId())),
+			'related' => \App\Json::encode(Documents_Record_Model::getReferenceModuleByDocId($recordModel->getId())),
 			'countRelated' => AppConfig::relation('SHOW_RECORDS_COUNT')
 		];
 		return $relatedLinks;

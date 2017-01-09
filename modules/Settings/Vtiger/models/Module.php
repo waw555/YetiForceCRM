@@ -15,11 +15,11 @@
 class Settings_Vtiger_Module_Model extends Vtiger_Base_Model
 {
 
-	var $baseTable = 'vtiger_settings_field';
-	var $baseIndex = 'fieldid';
-	var $listFields = array('name' => 'Name', 'description' => 'Description');
-	var $nameFields = array('name');
-	var $name = 'Vtiger';
+	public $baseTable = 'vtiger_settings_field';
+	public $baseIndex = 'fieldid';
+	public $listFields = array('name' => 'Name', 'description' => 'Description');
+	public $nameFields = array('name');
+	public $name = 'Vtiger';
 
 	public function getName($includeParentIfExists = false)
 	{
@@ -74,7 +74,7 @@ class Settings_Vtiger_Module_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get field using field name
-	 * @param <String> $fieldName
+	 * @param string $fieldName
 	 * @return <Field_Model>
 	 */
 	public function getField($fieldName)
@@ -126,7 +126,7 @@ class Settings_Vtiger_Module_Model extends Vtiger_Base_Model
 
 	/**
 	 * Function to get Index view Url
-	 * @return <String> URL
+	 * @return string URL
 	 */
 	public function getIndexViewUrl()
 	{
@@ -201,21 +201,19 @@ class Settings_Vtiger_Module_Model extends Vtiger_Base_Model
 
 	public static function addSettingsField($block, $params)
 	{
-		$db = PearDatabase::getInstance();
+		$db = App\Db::getInstance();
 		$blockId = vtlib\Deprecated::getSettingsBlockId($block);
-		$result = $db->pquery('SELECT max(sequence) as sequence FROM vtiger_settings_field WHERE blockid=?', [$blockId]);
-		$sequence = $db->getSingleValue($result);
-		$fieldId = $db->getUniqueId('vtiger_settings_field');
-		$params['fieldid'] = $fieldId;
+		$sequence = (new App\Db\Query())->from('vtiger_settings_field')->where(['blockid' => $blockId])
+				->max('sequence');
 		$params['blockid'] = $blockId;
 		$params['sequence'] = $sequence;
-		$db->insert('vtiger_settings_field', $params);
+		$db->createCommand()->insert('vtiger_settings_field', $params)->execute();
 	}
 
 	public static function deleteSettingsField($block, $name)
 	{
 		$db = PearDatabase::getInstance();
 		$blockId = vtlib\Deprecated::getSettingsBlockId($block);
-		$db->delete('vtiger_settings_field', 'name = ? AND blockid=?', [$name, $blockId]);
+		$db->delete('vtiger_settings_field', 'name = ? && blockid=?', [$name, $blockId]);
 	}
 }

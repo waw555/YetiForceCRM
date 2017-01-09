@@ -5,39 +5,69 @@
  * @license licenses/License.html
  * @author Mariusz Krzaczkowski <m.krzaczkowski@yetiforce.com>
  */
-$adb = PearDatabase::getInstance();
 $limit = AppConfig::performance('CRON_MAX_NUMERS_RECORD_PRIVILEGES_UPDATER');
-
-$i = 0;
-$result = $adb->query(sprintf('SELECT * FROM u_yf_crmentity_search_label WHERE `userid` = \'\' LIMIT %s', $limit));
-while ($row = $adb->getRow($result)) {
-	\includes\GlobalPrivileges::updateGlobalSearch($row['crmid'], $row['setype']);
-	$i++;
-	if ($i == $limit) {
+$dataReader = (new \App\Db\Query())->select('crmid, setype')
+		->from('vtiger_crmentity')
+		->where(['users' => null])
+		->limit($limit)
+		->createCommand()->query();
+while ($row = $dataReader->read()) {
+	\App\PrivilegeUpdater::update($row['crmid'], $row['setype']);
+	$limit--;
+	if (0 === $limit) {
 		return;
 	}
 }
-$resultUpdater = $adb->query(sprintf('SELECT * FROM s_yf_privileges_updater ORDER BY `priority` DESC LIMIT %s', $limit));
-while ($row = $adb->getRow($resultUpdater)) {
+$dataReader = (new \App\Db\Query())
+		->from('u_#__crmentity_search_label')
+		->where(['userid' => ''])
+		->limit($limit)
+		->createCommand()->query();
+while ($row = $dataReader->read()) {
+	\App\PrivilegeUpdater::updateSearch($row['crmid'], $row['setype']);
+	$limit--;
+	if (0 === $limit) {
+		return;
+	}
+}
+$dataReader = (new \App\Db\Query())
+		->from('s_#__privileges_updater')
+		->orderBy(['priority' => SORT_DESC])
+		->limit($limit)
+		->createCommand()->query();
+while ($row = $dataReader->read()) {
+	$db = App\Db::getInstance();
 	$crmid = $row['crmid'];
-	if ($row['type'] == 0) {
-		\includes\GlobalPrivileges::updateGlobalSearch($crmid, $row['module']);
-		$i++;
-		if ($i == $limit) {
+	if (0 === $row['type']) {
+		\App\PrivilegeUpdater::update($crmid, $row['module']);
+		$limit--;
+		if (0 === $limit) {
 			return;
 		}
 	} else {
-		$resultCrm = $adb->pquery(sprintf('SELECT crmid FROM vtiger_crmentity WHERE setype =? AND crmid > ? LIMIT %s', $limit), [$row['module'], $crmid]);
-		while ($rowCrm = $adb->getRow($resultCrm)) {
-			\includes\GlobalPrivileges::updateGlobalSearch($rowCrm['crmid'], $row['module']);
-			$affected = $adb->update('s_yf_privileges_updater', ['crmid' => $rowCrm['crmid']], 'module =? AND type =? AND crmid =?', [$row['module'], 1, $crmid]);
+		$dataReaderCrm = (new \App\Db\Query())->select(['crmid'])
+				->from('vtiger_crmentity')
+				->where(['and', ['deleted' => 0], ['setype' => $row['module']], ['>', 'crmid', $crmid]])
+				->limit($limit)
+				->createCommand()->query();
+		while ($rowCrm = $dataReaderCrm->read()) {
+			\App\PrivilegeUpdater::update($rowCrm['crmid'], $row['module']);
+			$affected = $db->createCommand()->update('s_#__privileges_updater', ['crmid' => $rowCrm['crmid']], [
+					'module' => $row['module'],
+					'type' => 1,
+					'crmid' => $crmid
+				])->execute();
 			$crmid = $rowCrm['crmid'];
-			$i++;
-			if ($i == $limit || $affected == 0) {
+			$limit--;
+			if (0 === $limit || $affected === 0) {
 				return;
 			}
 		}
 	}
-	$adb->delete('s_yf_privileges_updater', 'module =? AND type =? AND crmid =?', [$row['module'], $row['type'], $crmid]);
+	$db->createCommand()->delete('s_#__privileges_updater', [
+		'module' => $row['module'],
+		'type' => $row['type'],
+		'crmid' => $crmid
+	])->execute();
 }
 

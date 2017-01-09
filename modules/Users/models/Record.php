@@ -20,9 +20,21 @@ class Users_Record_Model extends Vtiger_Record_Model
 	}
 
 	/**
+	 * Function to get the Module to which the record belongs
+	 * @return Vtiger_Module_Model
+	 */
+	public function getModule()
+	{
+		if (empty($this->module)) {
+			$this->module = Vtiger_Module_Model::getInstance('Users');
+		}
+		return $this->module;
+	}
+
+	/**
 	 * Gets the value of the key . First it will check whether specified key is a property if not it
 	 *  will get from normal data attribure from base class
-	 * @param <string> $key - property or key name
+	 * @param string $key - property or key name
 	 * @return <object>
 	 */
 	public function get($key)
@@ -36,8 +48,8 @@ class Users_Record_Model extends Vtiger_Record_Model
 	/**
 	 * Sets the value of the key . First it will check whether specified key is a property if not it
 	 * will set from normal set from base class
-	 * @param <string> $key - property or key name
-	 * @param <string> $value
+	 * @param string $key - property or key name
+	 * @param string $value
 	 */
 	public function set($key, $value)
 	{
@@ -50,7 +62,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the Detail View url for the record
-	 * @return <String> - Record Detail View Url
+	 * @return string - Record Detail View Url
 	 */
 	public function getDetailViewUrl()
 	{
@@ -60,7 +72,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the Detail View url for the Preferences page
-	 * @return <String> - Record Detail View Url
+	 * @return string - Record Detail View Url
 	 */
 	public function getPreferenceDetailViewUrl()
 	{
@@ -70,7 +82,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the url for the Profile page
-	 * @return <String> - Profile Url
+	 * @return string - Profile Url
 	 */
 	public function getProfileUrl()
 	{
@@ -80,7 +92,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the Edit View url for the record
-	 * @return <String> - Record Edit View Url
+	 * @return string - Record Edit View Url
 	 */
 	public function getEditViewUrl()
 	{
@@ -90,7 +102,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the Edit View url for the Preferences page
-	 * @return <String> - Record Detail View Url
+	 * @return string - Record Detail View Url
 	 */
 	public function getPreferenceEditViewUrl()
 	{
@@ -100,7 +112,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the Delete Action url for the record
-	 * @return <String> - Record Delete Action Url
+	 * @return string - Record Delete Action Url
 	 */
 	public function getDeleteUrl()
 	{
@@ -110,12 +122,12 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to check whether the user is an Admin user
-	 * @return <Boolean> true/false
+	 * @return boolean true/false
 	 */
 	public function isAdminUser()
 	{
 		$adminStatus = $this->get('is_admin');
-		if ($adminStatus == 'on') {
+		if ($adminStatus === 'on') {
 			return true;
 		}
 		return false;
@@ -123,7 +135,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the module name
-	 * @return <String> Module Name
+	 * @return string Module Name
 	 */
 	public function getModuleName()
 	{
@@ -140,7 +152,10 @@ class Users_Record_Model extends Vtiger_Record_Model
 	 */
 	public function save()
 	{
-		parent::save();
+		$db = PearDatabase::getInstance();
+		$db->startTransaction();
+		$this->getModule()->saveRecord($this);
+		$db->completeTransaction();
 	}
 
 	/**
@@ -162,7 +177,6 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	public static function getCurrentUserModel()
 	{
-		//TODO : Remove the global dependency
 		$currentUser = vglobal('current_user');
 		if (!empty($currentUser)) {
 
@@ -171,7 +185,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 			$currentUserModel = NULL;
 			if (isset(self::$currentUserModels[$currentUser->id])) {
 				$currentUserModel = self::$currentUserModels[$currentUser->id];
-				if (isset($currentUser->column_fields['modifiedtime']) && $currentUser->column_fields['modifiedtime'] != $currentUserModel->get('modifiedtime')) {
+				if (isset($currentUser->column_fields['modifiedtime']) && $currentUser->column_fields['modifiedtime'] !== $currentUserModel->get('modifiedtime')) {
 					$currentUserModel = NULL;
 				}
 			}
@@ -234,7 +248,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 	 * Function returns the Subordinate users
 	 * @return <Array>
 	 */
-	function getSubordinateUsers()
+	public function getSubordinateUsers()
 	{
 		$privilegesModel = $this->get('privileges');
 
@@ -257,9 +271,9 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns the Users Parent Role
-	 * @return <String>
+	 * @return string
 	 */
-	function getParentRoleSequence()
+	public function getParentRoleSequence()
 	{
 		$privilegesModel = $this->get('privileges');
 
@@ -273,9 +287,9 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns the Users Current Role
-	 * @return <String>
+	 * @return string
 	 */
-	function getRole()
+	public function getRole()
 	{
 		$privilegesModel = $this->get('privileges');
 
@@ -287,7 +301,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 		return $privilegesModel->get('roleid');
 	}
 
-	function getRoleDetail()
+	public function getRoleDetail()
 	{
 		$roleDetail = $this->get('roleDetail');
 		if (!empty($roleDetail)) {
@@ -305,9 +319,9 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function returns the Users Current Role
-	 * @return <String>
+	 * @return string
 	 */
-	function getProfiles()
+	public function getProfiles()
 	{
 		$userProfiles = $this->get('profiles');
 		if (empty($userProfiles)) {
@@ -324,7 +338,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 		return $profiles;
 	}
 
-	function getGroups()
+	public function getGroups()
 	{
 		if (empty($this->get('groups'))) {
 			if ($this->isAdminUser()) {
@@ -340,11 +354,11 @@ class Users_Record_Model extends Vtiger_Record_Model
 		return $this->get('groups');
 	}
 
-	function getParentRoles()
+	public function getParentRoles()
 	{
 		if (empty($this->get('parentRoles'))) {
 			if ($this->isAdminUser()) {
-				$userParentRoles = getParentRole($this->getRole());
+				$userParentRoles = \App\PrivilegeUtil::getParentRole($this->getRole());
 			} else {
 				$privilegesModel = $this->getPrivileges();
 				$userParentRoles = $privilegesModel->get('parent_roles');
@@ -408,18 +422,16 @@ class Users_Record_Model extends Vtiger_Record_Model
 	public function getPrivileges()
 	{
 		$privilegesModel = $this->get('privileges');
-
 		if (empty($privilegesModel)) {
 			$privilegesModel = Users_Privileges_Model::getInstanceById($this->getId());
 			$this->set('privileges', $privilegesModel);
 		}
-
 		return $privilegesModel;
 	}
 
 	/**
 	 * Function to get user default activity view
-	 * @return <String>
+	 * @return string
 	 */
 	public function getActivityView()
 	{
@@ -477,24 +489,12 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get user groups
-	 * @param type $userId
-	 * @return <array> - groupId's
+	 * @param int $userId
+	 * @return array - groupId's
 	 */
 	public static function getUserGroups($userId)
 	{
-		$groupIds = Vtiger_Cache::get('getUserGroups', $userId);
-		if ($groupIds !== false) {
-			return $groupIds;
-		}
-		$db = PearDatabase::getInstance();
-		$groupIds = [];
-		$query = 'SELECT groupid FROM vtiger_users2group WHERE userid=?';
-		$result = $db->pquery($query, array($userId));
-		while (($groupId = $db->getSingleValue($result)) !== false) {
-			$groupIds[] = $groupId;
-		}
-		Vtiger_Cache::set('getUserGroups', $userId, $groupIds);
-		return $groupIds;
+		return App\PrivilegeUtil::getUserGroups($userId);
 	}
 	/**
 	 * Function returns the users activity reminder in seconds
@@ -505,7 +505,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 	 * Function returns the users activity reminder in seconds
 	 * @return string
 	 */
-	function getCurrentUserActivityReminderInSeconds()
+	public function getCurrentUserActivityReminderInSeconds()
 	{
 		$activityReminder = $this->reminder_interval;
 		$activityReminderInSeconds = '';
@@ -533,29 +533,21 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get the users count
-	 * @param <Boolean> $onlyActive - If true it returns count of only acive users else only inactive users
-	 * @return <Integer> number of users
+	 * @param boolean $onlyActive - If true it returns count of only acive users else only inactive users
+	 * @return int number of users
 	 */
 	public static function getCount($onlyActive = false)
 	{
-		$db = PearDatabase::getInstance();
-		$query = 'SELECT 1 FROM vtiger_users ';
-		$params = [];
-
+		$query = (new App\Db\Query())->from('vtiger_users');
 		if ($onlyActive) {
-			$query.= ' WHERE status=? ';
-			array_push($params, 'active');
+			$query->where(['status' => 'Active']);
 		}
-
-		$result = $db->pquery($query, $params);
-
-		$numOfUsers = $db->num_rows($result);
-		return $numOfUsers;
+		return $query->count();
 	}
 
 	/**
 	 * Funtion to get Duplicate Record Url
-	 * @return <String>
+	 * @return string
 	 */
 	public function getDuplicateRecordUrl()
 	{
@@ -565,7 +557,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 
 	/**
 	 * Function to get instance of user model by name
-	 * @param <String> $userName
+	 * @param string $userName
 	 * @return <Users_Record_Model>
 	 */
 	public static function getInstanceByName($userName)
@@ -602,7 +594,7 @@ class Users_Record_Model extends Vtiger_Record_Model
 	{
 		$db = PearDatabase::getInstance();
 
-		$sql = 'SELECT id FROM vtiger_users WHERE status=? AND is_admin=?';
+		$sql = 'SELECT id FROM vtiger_users WHERE status=? && is_admin=?';
 		$result = $db->pquery($sql, array('ACTIVE', 'on'));
 
 		$noOfUsers = $db->num_rows($result);
@@ -644,34 +636,25 @@ class Users_Record_Model extends Vtiger_Record_Model
 	 * to whom records should be assigned
 	 */
 
-	public function deleteUserPermanently($userId, $newOwnerId)
+	public static function deleteUserPermanently($userId, $newOwnerId)
 	{
-		$db = PearDatabase::getInstance();
-
-		$sql = 'UPDATE vtiger_crmentity SET smcreatorid=?,smownerid=? WHERE smcreatorid=? AND setype=?';
-		$db->pquery($sql, array($newOwnerId, $newOwnerId, $userId, 'ModComments'));
-
+		$db = App\Db::getInstance();
+		$db->createCommand()->update('vtiger_crmentity', ['smcreatorid' => $newOwnerId, 'smownerid' => $newOwnerId], ['smcreatorid' => $userId, 'setype' => 'ModComments'])->execute();
 		//update history details in vtiger_modtracker_basic 
-		$sql = 'update vtiger_modtracker_basic set whodid=? where whodid=?';
-		$db->pquery($sql, array($newOwnerId, $userId));
-
+		$db->createCommand()->update('vtiger_modtracker_basic', ['whodid' => $newOwnerId], ['whodid' => $userId])->execute();
 		//update comments details in vtiger_modcomments 
-		$sql = 'update vtiger_modcomments set userid=? where userid=?';
-		$db->pquery($sql, array($newOwnerId, $userId));
-
-		$sql = 'DELETE FROM vtiger_users WHERE id=?';
-		$db->pquery($sql, array($userId));
-
+		$db->createCommand()->update('vtiger_modcomments', ['userid' => $newOwnerId], ['userid' => $userId])->execute();
+		$db->createCommand()->delete('vtiger_users', ['id' => $userId])->execute();
 		deleteUserRelatedSharingRules($userId);
 	}
 
 	/**
 	 * Function to get the Display Name for the record
-	 * @return <String> - Entity Display Name for the record
+	 * @return string - Entity Display Name for the record
 	 */
 	public function getDisplayName()
 	{
-		return getFullNameFromArray($this->getModuleName(), $this->getData());
+		return \vtlib\Deprecated::getFullNameFromArray($this->getModuleName(), $this->getData());
 	}
 
 	public function getSwitchUsersUrl()
