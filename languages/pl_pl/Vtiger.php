@@ -912,7 +912,7 @@ $languageStrings = [
 	'LBL_EXECUTE' => 'Wykonaj',
 	'BTN_WORKFLOW_TRIGGER' => 'Narzędzie umożliwiające ręczne wywołanie obiegów informacji, które uruchomi automatycznie wszystkie podpięte zadania.',
 	//breadcrumbs view name
-	'LBL_VIEW_CREATE' => 'Dodawanie',
+	'LBL_VIEW_CREATE' => 'Tworzenie',
 	'LBL_VIEW_EDIT' => 'Edycja',
 	'LBL_VIEW_DETAIL' => 'Podgląd',
 	'LBL_VIEW_LIST' => 'Lista',
@@ -1294,6 +1294,7 @@ $languageStrings = [
 	'LBL_EMAIL_ADRESS' => 'Adres mail',
 	'LBL_EMAIL_TEMPLATE' => 'Szablon mailowy',
 	'LBL_MASS_SEND_EMAIL_INFO' => 'Wszystkie maile są kolejkowane i wysłane w cronie.',
+	'ERR_NO_DEFAULT_SMTP' => 'Brak domyślnej skrzynki pocztowej do wysyłania wiadomości.',
 ];
 $jsLanguageStrings = [
 	'JS_SUMMARY' => 'Podsumowanie',
